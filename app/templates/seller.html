@@ -1,140 +1,47 @@
-{% from "_flash.html" import plain, csrf %}
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seller Home</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-        }
-
-        .container {
-            text-align: center;
-            background-color: #fff;
-            padding: 50px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            border-radius: 10px;
-            width: 80%;
-            max-width: 600px;
-            margin: 30px 0;
-        }
-
-        h1 {
-            margin-bottom: 30px;
-            color: #333;
-        }
-
-        form {
-            text-align: left;
-            margin: 0 auto;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            color: #333;
-        }
-
-        .form-group input[type="text"],
-        .form-group input[type="number"],
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-sizing: border-box;
-        }
-
-        .form-group input[type="file"] {
-            margin-top: 5px;
-        }
-
-        .form-group button {
-            display: inline-block;
-            padding: 15px 30px;
-            font-size: 18px;
-            cursor: pointer;
-            border: none;
-            border-radius: 5px;
-            background-color: #007bff;
-            color: white;
-            transition: background-color 0.3s;
-        }
-
-        .form-group button:hover {
-            background-color: #0056b3;
-        }
-
-        .hint {
-            font-size: 13px;
-            color: #666;
-            margin-top: 4px;
-        }
-    </style>
-</head>
-
-<body>
-    <div class="container">
-        <h1>{{ 'Edit Stamp Details' if stamp else 'Upload Stamp Details' }}</h1>
-        {{ plain() }}
-        <form action="{{ url_for('main.edit_stamp', listing_id=stamp.id) if stamp else url_for('main.submit_stamp') }}" method="POST" enctype="multipart/form-data">
+{% extends "base.html" %}
+{% from "_ui.html" import csrf, member_nav with context %}
+{% set active = 'mela' %}
+{% block title %}{{ 'Edit stamp' if stamp else 'Sell a stamp' }}{% endblock %}
+{% block content %}
+<div class="account">
+    {{ member_nav('listings') }}
+    <div>
+        <div class="page-head"><div>
+            <h1>{{ 'Edit Stamp Details' if stamp else 'Upload Stamp Details' }}</h1>
+            <p>{{ 'Changes are re-verified automatically.' if stamp else 'Your listing is checked for copied photos as soon as you submit it.' }}</p>
+        </div></div>
+        <form class="card form" action="{{ url_for('main.edit_stamp', listing_id=stamp.id) if stamp else url_for('main.submit_stamp') }}" method="POST" enctype="multipart/form-data">
             {{ csrf() }}
-            <div class="form-group">
-                <label for="stamp_name">Stamp Name:</label>
-                <input type="text" id="stamp_name" name="stamp_name" value="{{ form.get('stamp_name', '') }}" maxlength="150" required>
+            <label for="stamp_name">Stamp name</label>
+            <input type="text" id="stamp_name" name="stamp_name" value="{{ form.get('stamp_name', '') }}" maxlength="150" required>
+            <div class="form-grid">
+                <div><label for="year_of_manufacture">Year of issue</label>
+                    <input type="number" id="year_of_manufacture" name="year_of_manufacture" value="{{ form.get('year_of_manufacture', '') }}" min="1840" required></div>
+                <div><label for="coated_price">Asking price (₹)</label>
+                    <input type="number" id="coated_price" name="coated_price" step="0.01" min="0.01" value="{{ form.get('coated_price', '') }}" required></div>
+                <div><label for="quantity">Quantity</label>
+                    <input type="number" id="quantity" name="quantity" min="{{ 0 if stamp else 1 }}" value="{{ form.get('quantity', 1) }}" required></div>
             </div>
-            <div class="form-group">
-                <label for="year_of_manufacture">Year of Manufacture:</label>
-                <input type="number" id="year_of_manufacture" name="year_of_manufacture" value="{{ form.get('year_of_manufacture', '') }}" min="1840" required>
-            </div>
-            <div class="form-group">
-                <label for="coated_price">Coated Price:</label>
-                <input type="number" id="coated_price" name="coated_price" step="0.01" min="0.01" value="{{ form.get('coated_price', '') }}" required>
-            </div>
-            <div class="form-group">
-                <label for="quantity">Quantity:</label>
-                <input type="number" id="quantity" name="quantity" min="{{ 0 if stamp else 1 }}" value="{{ form.get('quantity', 1) }}" required>
-            </div>
-            <div class="form-group">
-                <label for="issue_id">Official Issue (optional):</label>
-                <select id="issue_id" name="issue_id">
-                    <option value="">Not an official issue / don't know</option>
-                    {% for issue in issues %}
-                    <option value="{{ issue.id }}" {% if form.get('issue_id')|string == issue.id|string %}selected{% endif %}>{{ issue.title }} ({{ issue.issue_date.year }}, {{ issue.circle.postal_circle }})</option>
-                    {% endfor %}
-                </select>
-                <div class="hint">If you pick one, your photo and year are checked against the postal circle's official image.</div>
-            </div>
-            <div class="form-group">
-                <label for="description">Description:</label>
-                <textarea id="description" name="description" rows="4" maxlength="2000" {% if not stamp %}required{% endif %}>{{ form.get('description', '') }}</textarea>
-            </div>
+            <label for="issue_id">Official issue (optional)</label>
+            <select id="issue_id" name="issue_id">
+                <option value="">Not an official issue / don't know</option>
+                {% for issue in issues %}
+                <option value="{{ issue.id }}" {% if form.get('issue_id')|string == issue.id|string %}selected{% endif %}>{{ issue.title }} ({{ issue.issue_date.year }}, {{ issue.circle.postal_circle }})</option>
+                {% endfor %}
+            </select>
+            <p class="hint">If you pick one, your photo and year are checked against the postal circle's official image.</p>
+            <label for="description">Description</label>
+            <textarea id="description" name="description" rows="4" maxlength="2000" {% if not stamp %}required{% endif %}>{{ form.get('description', '') }}</textarea>
             {% if not stamp %}
-            <div class="form-group">
-                <label for="stamp_photo">Upload Stamp Photo:</label>
-                <input type="file" id="stamp_photo" name="stamp_photo" accept="image/png,image/jpeg,image/webp" required>
-                <div class="hint">PNG, JPEG or WebP, up to 5 MB. Photos are checked for copies of other sellers' listings.</div>
-            </div>
+            <label for="stamp_photo">Stamp photo</label>
+            <input type="file" id="stamp_photo" name="stamp_photo" accept="image/png,image/jpeg,image/webp" required>
+            <p class="hint">PNG, JPEG or WebP, up to 5 MB. Location data is removed from photos automatically.</p>
             {% endif %}
-            <div class="form-group">
-                <button type="submit">{{ 'Save Changes' if stamp else 'Submit' }}</button>
+            <div class="actions">
+                <button type="submit" class="btn">{{ 'Save changes' if stamp else 'Publish listing' }}</button>
+                <a class="btn ghost" href="{{ url_for('main.seller_home') }}">Cancel</a>
             </div>
         </form>
     </div>
-</body>
-
-</html>
+</div>
+{% endblock %}

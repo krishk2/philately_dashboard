@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import re
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
+from flask import current_app
 from sqlalchemy import or_, select, update
 
 from ..extensions import db
@@ -13,12 +14,17 @@ from ..models import (
     LISTING_ACTIVE,
     LISTING_REMOVED,
     LISTING_SOLD_OUT,
+    PREBOOK_CANCELLED,
+    PREBOOK_EXPIRED,
+    PREBOOK_PAID,
+    PREBOOK_PENDING,
     Issue,
     Listing,
     Order,
     Prebooking,
     User,
     VerificationReport,
+    utcnow,
 )
 from ..verification import verify_listing
 from .errors import Forbidden, OutOfStock, ValidationError
@@ -257,12 +263,18 @@ def place_order(
 
 
 def prebook_issue(user: User, issue_id: int, quantity) -> Prebooking:
-    """Reserve copies of a new official issue, with the same race-safe decrement as orders."""
+    """Hold copies of a new official issue while the collector pays.
+
+    Stock is taken with the same race-safe conditional UPDATE as orders. The booking starts as
+    *pending* and expires after PREBOOK_HOLD_MINUTES if unpaid, which returns the copies, so
+    nobody can hoard an issue without paying.
+    """
     quantity = parse_int(quantity, "Quantity", minimum=1, maximum=100)
     if user.is_circle:
         raise Forbidden("Postal circle accounts cannot pre-book issues.")
     if db.session.get(Issue, issue_id) is None:
         raise ValidationError("Issue not found.")
+    expire_stale_prebookings()  # free any lapsed holds first, so their copies are available
 
     result = db.session.execute(
         update(Issue)
@@ -274,9 +286,86 @@ def prebook_issue(user: User, issue_id: int, quantity) -> Prebooking:
         db.session.rollback()
         raise OutOfStock("Not enough copies left to pre-book.")
 
-    booking = Prebooking(issue_id=issue_id, user=user, quantity=quantity)
+    hold = timedelta(minutes=current_app.config["PREBOOK_HOLD_MINUTES"])
+    booking = Prebooking(
+        issue_id=issue_id,
+        user=user,
+        quantity=quantity,
+        status=PREBOOK_PENDING,
+        expires_at=utcnow() + hold,
+    )
     db.session.add(booking)
     db.session.commit()
+    return booking
+
+
+def _release(booking_ids: list[int], new_status: str) -> int:
+    """Move pending bookings to expired/cancelled and return their copies. Race-safe: only the
+    process whose UPDATE flips a row from pending gets to return that row's stock."""
+    released = 0
+    for booking_id in booking_ids:
+        flipped = db.session.execute(
+            update(Prebooking)
+            .where(Prebooking.id == booking_id, Prebooking.status == PREBOOK_PENDING)
+            .values(status=new_status)
+            .execution_options(synchronize_session=False)
+        ).rowcount
+        if flipped:
+            booking = db.session.get(Prebooking, booking_id)
+            db.session.execute(
+                update(Issue)
+                .where(Issue.id == booking.issue_id)
+                .values(prebook_available=Issue.prebook_available + booking.quantity)
+                .execution_options(synchronize_session=False)
+            )
+            released += 1
+    db.session.commit()
+    db.session.expire_all()
+    return released
+
+
+def expire_stale_prebookings() -> int:
+    stale = db.session.scalars(
+        select(Prebooking.id).where(
+            Prebooking.status == PREBOOK_PENDING, Prebooking.expires_at < utcnow()
+        )
+    ).all()
+    return _release(list(stale), PREBOOK_EXPIRED) if stale else 0
+
+
+def cancel_prebooking(user: User, booking: Prebooking) -> None:
+    if booking.user_id != user.id:
+        raise Forbidden("That isn't your pre-booking.")
+    if booking.status != PREBOOK_PENDING:
+        raise ValidationError("Only unpaid pre-bookings can be cancelled.")
+    _release([booking.id], PREBOOK_CANCELLED)
+
+
+def pay_prebooking(user: User, booking: Prebooking, card: dict) -> Prebooking:
+    """Confirm a pending pre-booking through the (simulated) payment gateway."""
+    from .payments import charge
+
+    if booking.user_id != user.id:
+        raise Forbidden("That isn't your pre-booking.")
+    expire_stale_prebookings()
+    db.session.refresh(booking)
+    if booking.status == PREBOOK_PAID:
+        return booking
+    if booking.status != PREBOOK_PENDING:
+        raise ValidationError(
+            "This pre-booking has expired and the copies were released. Please book again."
+        )
+    reference = charge(booking.total, card)  # raises PaymentDeclined
+    paid = db.session.execute(
+        update(Prebooking)
+        .where(Prebooking.id == booking.id, Prebooking.status == PREBOOK_PENDING)
+        .values(status=PREBOOK_PAID, paid_at=utcnow(), payment_ref=reference)
+        .execution_options(synchronize_session=False)
+    ).rowcount
+    db.session.commit()
+    db.session.refresh(booking)
+    if not paid:
+        raise ValidationError("This pre-booking is no longer awaiting payment.")
     return booking
 
 
@@ -344,7 +433,7 @@ def set_issue_stock(issue: Issue, user: User, quantity) -> Issue:
 def delete_issue(issue: Issue, user: User) -> None:
     if issue.circle_id != user.id:
         raise Forbidden("You can only delete your own circle's issues.")
-    if issue.prebookings:
+    if any(b.status in (PREBOOK_PAID, PREBOOK_PENDING) for b in issue.prebookings):
         raise ValidationError("This issue already has pre-bookings and cannot be deleted.")
     linked = db.session.scalar(select(Listing.id).where(Listing.issue_id == issue.id).limit(1))
     if linked is not None:

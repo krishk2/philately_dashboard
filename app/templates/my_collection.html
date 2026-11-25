@@ -1,77 +1,48 @@
-{% from "_member_sidebar.html" import member_sidebar with context %}
-{% from "_flash.html" import plain, csrf %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Collection</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles_for_dash.css') }}">
-    <style>
-        /* Same card as the dashboard's profile section, stacked, with a simple table inside. */
-        .collection-section { flex-direction: column; margin-bottom: 25px; }
-        .collection-section h3 { font-size: 24px; margin-bottom: 10px; }
-        .collection-section table { width: 100%; border-collapse: collapse; }
-        .collection-section th, .collection-section td { text-align: left; padding: 10px; border-bottom: 1px solid #eee; }
-        .collection-section th { color: #2d2d44; }
-        .collection-section a { color: #2d2d44; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        {{ member_sidebar('collection') }}
+{% extends "base.html" %}
+{% from "_ui.html" import member_nav with context %}
+{% block title %}My collection{% endblock %}
+{% block content %}
+<div class="account">
+    {{ member_nav('collection') }}
+    <div class="stack">
+        <div class="page-head" style="margin-bottom:0"><div><h1>My Collection</h1><p>Stamps you've bought and issues you've pre-booked.</p></div></div>
 
-        <div class="main-content">
-            <header class="dashboard-header">
-                <h2>My Collection</h2>
-            </header>
+        <section class="card">
+            <div class="card-head"><h2>Stamps I've Bought</h2></div>
+            {% if orders %}
+            <div class="table-wrap"><table class="table">
+                <thead><tr><th>Stamp</th><th>Seller</th><th>Qty</th><th>Total</th><th>Date</th></tr></thead>
+                <tbody>
+                {% for o in orders %}
+                    <tr><td><a href="{{ url_for('main.stamp_detail', listing_id=o.listing_id) }}">{{ o.listing.title }}</a></td>
+                        <td>{{ o.listing.seller.username }}</td><td>{{ o.quantity }}</td><td class="nowrap">₹{{ o.total }}</td>
+                        <td class="nowrap">{{ o.created_at.strftime('%d %b %Y') }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table></div>
+            {% else %}
+            <p class="muted">No purchases yet. Visit the <a href="{{ url_for('main.buyer_home') }}">Stamp Mela</a> to start collecting.</p>
+            {% endif %}
+        </section>
 
-            {{ plain() }}
-
-            <section class="profile-section collection-section">
-                <h3>Stamps I've Bought</h3>
-                {% if orders %}
-                <table>
-                    <thead><tr><th>Stamp</th><th>Seller</th><th>Qty</th><th>Total</th><th>Date</th></tr></thead>
-                    <tbody>
-                    {% for o in orders %}
-                        <tr>
-                            <td><a href="{{ url_for('main.stamp_detail', listing_id=o.listing_id) }}">{{ o.listing.title }}</a></td>
-                            <td>{{ o.listing.seller.username }}</td>
-                            <td>{{ o.quantity }}</td>
-                            <td>₹{{ o.total }}</td>
-                            <td>{{ o.created_at.strftime('%d %b %Y') }}</td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-                {% else %}
-                <p>No purchases yet. Visit the <a href="{{ url_for('main.buyer_home') }}">Stamp Mela</a> to start collecting.</p>
-                {% endif %}
-            </section>
-
-            <section class="profile-section collection-section">
-                <h3>My Pre-Bookings</h3>
-                {% if prebookings %}
-                <table>
-                    <thead><tr><th>Issue</th><th>Postal Circle</th><th>Issue Date</th><th>Qty</th></tr></thead>
-                    <tbody>
-                    {% for p in prebookings %}
-                        <tr>
-                            <td>{{ p.issue.title }}</td>
-                            <td>{{ p.issue.circle.postal_circle }}</td>
-                            <td>{{ p.issue.issue_date.strftime('%d %b %Y') }}</td>
-                            <td>{{ p.quantity }}</td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-                {% else %}
-                <p>No pre-bookings yet. See new issues in the <a href="{{ url_for('main.stamp_store') }}">Stamp Store</a>.</p>
-                {% endif %}
-            </section>
-        </div>
+        <section class="card">
+            <div class="card-head"><h2>My Pre-Bookings</h2></div>
+            {% if prebookings %}
+            <div class="table-wrap"><table class="table">
+                <thead><tr><th>Issue</th><th>Postal circle</th><th>Issue date</th><th>Qty</th><th>Status</th><th></th></tr></thead>
+                <tbody>
+                {% for p in prebookings %}
+                    <tr><td>{{ p.issue.title }}</td><td>{{ p.issue.circle.postal_circle }}</td>
+                        <td class="nowrap">{{ p.issue.issue_date.strftime('%d %b %Y') }}</td><td>{{ p.quantity }}</td>
+                        <td><span class="pill {{ p.status }}">{{ 'awaiting payment' if p.status == 'pending' else p.status }}</span></td>
+                        <td>{% if p.status == 'pending' %}<a class="btn sm" href="{{ url_for('main.payment', booking_id=p.id) }}">Pay ₹{{ p.total }}</a>{% endif %}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table></div>
+            {% else %}
+            <p class="muted">No pre-bookings yet. See new issues in the <a href="{{ url_for('main.stamp_store') }}">Stamp Store</a>.</p>
+            {% endif %}
+        </section>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}

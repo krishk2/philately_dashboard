@@ -1,60 +1,47 @@
-{% from "_member_sidebar.html" import member_sidebar with context %}
-{% from "_flash.html" import plain, csrf %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Profile</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles_for_profile.css') }}">
-</head>
-<body>
-    <div class="container">
-        {{ member_sidebar('profile') }}
-
-        <div class="main-content">
-            <header class="profile-header">
-                <h2>My Profile</h2>
-            </header>
-
-            {{ plain() }}
-
-            <section class="profile-edit-section">
-                <h3>Edit Your Profile Details</h3>
-                <form id="profileForm" method="POST" enctype="multipart/form-data" action="{{ url_for('member.myprofile', next=request.args.get('next')) }}">
-                    {{ csrf() }}
-                    <div class="profile-picture">
-                        <img id="profilePic" src="{{ url_for('main.uploaded_file', filename=current_user.avatar_filename) if current_user.avatar_filename else url_for('static', filename='profile-placeholder.avif') }}" alt="Profile Picture">
-                        <input type="file" id="profilePicInput" name="profilePic" accept="image/png,image/jpeg,image/webp">
+{% extends "base.html" %}
+{% from "_ui.html" import member_nav, csrf with context %}
+{% block title %}Edit profile{% endblock %}
+{% block content %}
+<div class="account">
+    {{ member_nav('profile') }}
+    <div>
+        <div class="page-head"><div><h1>My Profile</h1><p>How you appear to other collectors, and where your stamps are sent.</p></div></div>
+        <form class="stack form" method="POST" enctype="multipart/form-data" action="{{ url_for('member.myprofile', next=request.args.get('next')) }}">
+            {{ csrf() }}
+            <section class="card">
+                <h2>Photo</h2>
+                <div class="row" style="gap:20px">
+                    <img id="profilePic" src="{{ url_for('main.uploaded_file', filename=current_user.avatar_filename) if current_user.avatar_filename else url_for('static', filename='profile-placeholder.avif') }}" alt="Profile picture" style="width:96px;height:96px;border-radius:50%;object-fit:cover;border:3px solid var(--teal-soft)">
+                    <div style="flex:1;min-width:220px">
+                        <label for="profilePicInput" style="margin-top:0">Upload a new photo</label>
+                        <input type="file" id="profilePicInput" name="profilePic" accept="image/png,image/jpeg,image/webp" data-preview="profilePic">
+                        <p class="hint">Square images look best. Location data is removed automatically.</p>
                     </div>
-
-                    <label for="name">Full Name</label>
-                    <input type="text" id="name" name="name" placeholder="John Doe" value="{{ request.form.get('name', current_user.full_name or '') }}" required>
-
-                    <label for="email">Email</label>
-                    <input type="email" id="email" name="email" placeholder="john.doe@example.com" value="{{ request.form.get('email', current_user.email) }}" required>
-
-                    <label for="phone">Phone Number</label>
-                    <input type="tel" id="phone" name="phone" placeholder="+91 98765 43210" value="{{ request.form.get('phone', current_user.phone or '') }}">
-
-                    <label for="address">Dispatch Address</label>
-                    <textarea id="address" name="address" rows="3" placeholder="House, street, city, PIN code" style="width:100%;padding:0.75rem;margin-bottom:1rem;border:1px solid #ddd;border-radius:4px;font:inherit;box-sizing:border-box">{{ request.form.get('address', current_user.address or '') }}</textarea>
-                    <p style="margin:-0.5rem 0 1rem;font-size:0.85rem;color:#666">Used to prefill checkout and needed for an NPDA account, where new issues are dispatched.</p>
-
-                    <label for="membership">Membership Type</label>
-                    <select id="membership" name="membership">
-                        {% for m in memberships %}<option value="{{ m }}" {% if m == current_user.membership %}selected{% endif %}>{{ m }}</option>
-                        {% endfor %}
-                    </select>
-
-                    <button type="submit" class="submit-button">Save Changes</button>
-                </form>
+                </div>
             </section>
-        </div>
-    </div>
 
-    <!-- Include the script.js file here -->
-    <script src="{{ url_for('static', filename='script_for_profile.js') }}"></script>
-</body>
-</html>
+            <section class="card">
+                <h2>Personal details</h2>
+                <div class="form-grid">
+                    <div><label for="name">Full name</label><input type="text" id="name" name="name" placeholder="John Doe" value="{{ request.form.get('name', current_user.full_name or '') }}" required></div>
+                    <div><label for="email">Email</label><input type="email" id="email" name="email" value="{{ request.form.get('email', current_user.email) }}" required></div>
+                    <div><label for="membership">Membership type</label>
+                        <select id="membership" name="membership">
+                            {% for m in memberships %}<option value="{{ m }}" {% if m == current_user.membership %}selected{% endif %}>{{ m }}</option>{% endfor %}
+                        </select></div>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2>Contact &amp; dispatch</h2>
+                <p class="muted small">Used to prefill checkout, and needed for an NPDA account so new issues can be dispatched to you.</p>
+                <label for="phone">Phone number</label>
+                <input type="tel" id="phone" name="phone" placeholder="+91 98765 43210" value="{{ request.form.get('phone', current_user.phone or '') }}">
+                <label for="address">Dispatch address</label>
+                <textarea id="address" name="address" rows="3" placeholder="House, street, city, PIN code">{{ request.form.get('address', current_user.address or '') }}</textarea>
+                <div class="actions"><button type="submit" class="btn">Save changes</button><a class="btn ghost" href="{{ url_for('member.dashboard') }}">Cancel</a></div>
+            </section>
+        </form>
+    </div>
+</div>
+{% endblock %}

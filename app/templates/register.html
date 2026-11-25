@@ -1,88 +1,58 @@
-{% from "_flash.html" import plain, csrf %}
-{% from "_sso.html" import sso_buttons with context %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Philatelic Community Registration</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='styles2.css') }}">
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    $(document).ready(function() {
-      // Hide both registration forms initially (unless one has a validation error to show)
-      $('.tab-content').hide();
-      {% if open_tab == 'collector' %}$('#philatelist-content').show();{% endif %}
-      {% if open_tab == 'circle' %}$('#postalcircle-content').show();{% endif %}
+{% extends "base.html" %}
+{% from "_ui.html" import csrf, sso_buttons with context %}
+{% block title %}Register{% endblock %}
+{% block chatbot %}{% endblock %}
 
-      // Show Philatelist registration form when the Philatelist button is clicked
-      $('#philatelist-btn').click(function() {
-        $('#postalcircle-content').hide(); // Hide Postal Circle form
-        $('#philatelist-content').show();  // Show Philatelist form
-      });
+{% block full %}
+<div class="auth-wrap">
+<div class="container slim">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}<div class="alert {{ category if category in ('success', 'error', 'warning') else 'info' }}" role="alert">{{ message }}</div>{% endfor %}
+    {% endwith %}
+    <div class="card">
+        <h1 style="font-size:1.6rem">Create your account</h1>
+        <p class="muted">Free for collectors. Postal circles register their official account here too.</p>
 
-      // Show Postal Circle registration form when the Postal Circle button is clicked
-      $('#postalcircle-btn').click(function() {
-        $('#philatelist-content').hide();  // Hide Philatelist form
-        $('#postalcircle-content').show(); // Show Postal Circle form
-      });
-    });
-  </script>
-</head>
-<body>
-  <div class="container">
-    <header class="header">
-      <div class="header-content">
-        <img src="{{ url_for('static', filename='India-Post_Preview.png') }}" alt="India Post Logo" class="logo">
-        <h1>National Philatelic Community</h1>
-      </div>
-    </header>
+        <div class="role-switch" data-role-switch role="tablist">
+            <button type="button" role="tab" id="philatelist-btn" data-target="philatelist-content" aria-selected="{{ 'false' if open_tab == 'circle' else 'true' }}">Philatelist</button>
+            <button type="button" role="tab" id="postalcircle-btn" data-target="postalcircle-content" aria-selected="{{ 'true' if open_tab == 'circle' else 'false' }}">Postal Circle</button>
+        </div>
 
-    {{ plain() }}
+        <div id="philatelist-content" role="tabpanel">
+            <form class="form" action="{{ url_for('auth.register_philatelist') }}" method="POST">
+                {{ csrf() }}
+                <label for="p-user">Username</label>
+                <input type="text" id="p-user" name="username" value="{{ form.get('username', '') if open_tab == 'collector' }}" required autocomplete="username">
+                <label for="p-mail">Email</label>
+                <input type="email" id="p-mail" name="email" value="{{ form.get('email', '') if open_tab == 'collector' }}" required autocomplete="email">
+                <label for="p-pass">Password</label>
+                <input type="password" id="p-pass" name="password" minlength="8" required autocomplete="new-password">
+                <p class="hint">At least 8 characters.</p>
+                <div class="actions"><button class="btn block" type="submit">Register</button></div>
+            </form>
+            {{ sso_buttons() }}
+        </div>
 
-    <div class="selection-panel">
-      <h2>Select Your Registration Type</h2>
-      <div class="button-group">
-        <button class="user-button" id="philatelist-btn">Philatelist</button>
-        <button class="user-button" id="postalcircle-btn">Postal Circle</button>
-      </div>
+        <div id="postalcircle-content" role="tabpanel" hidden>
+            <form class="form" action="{{ url_for('auth.register_postalcircle') }}" method="POST">
+                {{ csrf() }}
+                <label for="c-circle">Postal circle</label>
+                <select id="c-circle" name="postal_circle" required>
+                    <option value="" disabled {% if not form.get('postal_circle') %}selected{% endif %}>Select postal circle</option>
+                    {% for c in circles %}<option value="{{ c }}" {% if form.get('postal_circle') == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+                </select>
+                <label for="c-user">Username</label>
+                <input type="text" id="c-user" name="username" value="{{ form.get('username', '') if open_tab == 'circle' }}" required autocomplete="username">
+                <label for="c-mail">Official email</label>
+                <input type="email" id="c-mail" name="email" value="{{ form.get('email', '') if open_tab == 'circle' }}" required autocomplete="email">
+                <label for="c-pass">Password</label>
+                <input type="password" id="c-pass" name="password" minlength="8" required autocomplete="new-password">
+                <div class="actions"><button class="btn navy block" type="submit">Register postal circle</button></div>
+            </form>
+        </div>
+
+        <p class="muted small" style="margin-top:18px;text-align:center">Already registered? <a href="{{ url_for('auth.login') }}">Log in</a></p>
     </div>
-
-    <!-- Registration Forms -->
-    <div class="registration-panel">
-      <!-- Philatelist Registration Form -->
-      <div class="tab-content" id="philatelist-content">
-        <h3>Philatelist Registration</h3>
-        <form action="{{ url_for('auth.register_philatelist') }}" method="POST">
-          {{ csrf() }}
-          <input type="text" class="input-field" name="username" placeholder="Username" value="{{ form.get('username', '') if open_tab == 'collector' }}" required autocomplete="username">
-          <input type="email" class="input-field" name="email" placeholder="Email" value="{{ form.get('email', '') if open_tab == 'collector' }}" required autocomplete="email">
-          <input type="password" class="input-field" name="password" placeholder="Password (8+ characters)" minlength="8" required autocomplete="new-password">
-          <button class="submit-button" type="submit">Register</button>
-        </form>
-        {{ sso_buttons() }}
-      </div>
-
-      <!-- Postal Circle Registration Form -->
-      <div class="tab-content" id="postalcircle-content">
-        <h3>Postal Circle Registration</h3>
-        <form action="{{ url_for('auth.register_postalcircle') }}" method="POST">
-          {{ csrf() }}
-          <select class="input-field" name="postal_circle" required>
-            <option value="" disabled {% if not form.get('postal_circle') %}selected{% endif %}>Select Postal Circle</option>
-            {% for c in circles %}<option value="{{ c }}" {% if form.get('postal_circle') == c %}selected{% endif %}>{{ c }}</option>
-            {% endfor %}
-          </select>
-          <input type="text" class="input-field" name="username" placeholder="Username" value="{{ form.get('username', '') if open_tab == 'circle' }}" required autocomplete="username">
-          <input type="email" class="input-field" name="email" placeholder="Email" value="{{ form.get('email', '') if open_tab == 'circle' }}" required autocomplete="email">
-          <input type="password" class="input-field" name="password" placeholder="Password (8+ characters)" minlength="8" required autocomplete="new-password">
-          <button class="submit-button" type="submit">Register</button>
-        </form>
-      </div>
-    </div>
-
-
-</body>
-</html>
+</div>
+</div>
+{% endblock %}

@@ -1,55 +1,37 @@
-{% from "_member_sidebar.html" import member_sidebar with context %}
-{% from "_flash.html" import plain, csrf %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Settings - Philatelist</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles_for_settings.css') }}">
-</head>
-<body>
-    <div class="container">
-        {{ member_sidebar('settings') }}
+{% extends "base.html" %}
+{% from "_ui.html" import member_nav, csrf with context %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<div class="account">
+    {{ member_nav('settings') }}
+    <div class="stack">
+        <div class="page-head" style="margin-bottom:0"><div><h1>Settings</h1><p>Account email and password.</p></div></div>
+        <form class="card form" method="POST" action="{{ url_for('member.update_email') }}">
+            {{ csrf() }}
+            <h2>Profile settings</h2>
+            <div class="form-grid">
+                <div><label for="username">Username</label><input type="text" id="username" value="{{ current_user.username }}" disabled></div>
+                <div><label for="email">Email</label><input type="email" id="email" name="email" value="{{ current_user.email }}" required></div>
+            </div>
+            <div class="actions"><button type="submit" class="btn">Save changes</button></div>
+        </form>
 
-        <div class="main-content">
-            <header class="dashboard-header">
-                <h2>Settings</h2>
-            </header>
-
-            {{ plain() }}
-
-            <section class="settings-section">
-                <h3>Profile Settings</h3>
-                <form id="profileForm" method="POST" action="{{ url_for('member.update_email') }}">
-                    {{ csrf() }}
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" value="{{ current_user.username }}" disabled>
-
-                    <label for="email">Email</label>
-                    <input type="email" id="email" name="email" value="{{ current_user.email }}" required>
-
-                    <button type="submit" class="save-button">Save Changes</button>
-                </form>
-
-                <h3>Password Settings</h3>
-                <form id="passwordForm" method="POST" action="{{ url_for('member.update_password') }}">
-                    {{ csrf() }}
-                    <label for="currentPassword">Current Password</label>
-                    <input type="password" id="currentPassword" name="currentPassword" required autocomplete="current-password">
-
-                    <label for="newPassword">New Password</label>
-                    <input type="password" id="newPassword" name="newPassword" minlength="8" required autocomplete="new-password">
-
-                    <label for="confirmPassword">Confirm New Password</label>
-                    <input type="password" id="confirmPassword" name="confirmPassword" minlength="8" required autocomplete="new-password">
-
-                    <button type="submit" class="save-button">Update Password</button>
-                </form>
-            </section>
-        </div>
+        <form class="card form" method="POST" action="{{ url_for('member.update_password') }}">
+            {{ csrf() }}
+            <h2>{{ 'Set a password' if sso_only else 'Password settings' }}</h2>
+            {% if sso_only %}
+                <p class="muted">You sign in with {{ sso_only }}. Set a password if you'd also like to log in with your username.</p>
+                <input type="hidden" name="currentPassword" value="">
+            {% else %}
+                <label for="currentPassword">Current password</label>
+                <input type="password" id="currentPassword" name="currentPassword" required autocomplete="current-password">
+            {% endif %}
+            <div class="form-grid">
+                <div><label for="newPassword">New password</label><input type="password" id="newPassword" name="newPassword" minlength="8" required autocomplete="new-password"></div>
+                <div><label for="confirmPassword">Confirm new password</label><input type="password" id="confirmPassword" name="confirmPassword" minlength="8" required autocomplete="new-password"></div>
+            </div>
+            <div class="actions"><button type="submit" class="btn">{{ 'Set password' if sso_only else 'Update password' }}</button></div>
+        </form>
     </div>
-    <script src="{{ url_for('static', filename='script_for_settings.js') }}"></script>
-</body>
-</html>
+</div>
+{% endblock %}

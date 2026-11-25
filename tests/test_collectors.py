@@ -26,7 +26,11 @@ def test_collection_and_badges(app, db, alice, bob, circle):
         },
         FileStorage(stream=png(9), filename="l.png"),
     )
-    svc.prebook_issue(bob, issue.id, 2)
+    booking = svc.prebook_issue(bob, issue.id, 2)
+    assert collectors.collection_for(bob)[0].how == "Bought"  # unpaid pre-bookings don't count
+    svc.pay_prebooking(
+        bob, booking, {"number": "4111111111111111", "expiry": "12/99", "cvv": "123"}
+    )
 
     items = collectors.collection_for(bob)
     assert {(i.title, i.how) for i in items} == {

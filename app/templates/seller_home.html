@@ -1,114 +1,41 @@
-{% from "_flash.html" import bootstrap, badge, csrf %}
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <title>Seller Home</title>
-    <style>
-        body {
-            background-color: #f8f9fa;
-        }
-
-        .sidebar {
-            height: 100vh;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 250px;
-            background-color: #343a40;
-            padding-top: 20px;
-        }
-
-        .sidebar a,
-        .sidebar button.link {
-            color: white;
-            padding: 10px 15px;
-            text-decoration: none;
-            display: block;
-        }
-
-        .sidebar button.link {
-            background: none;
-            border: none;
-            width: 100%;
-            text-align: left;
-            font: inherit;
-        }
-
-        .sidebar a:hover,
-        .sidebar button.link:hover {
-            background-color: #495057;
-        }
-
-        .content {
-            margin-left: 260px;
-            padding: 20px;
-        }
-
-        .account-btn {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-        }
-    </style>
-</head>
-
-<body>
-
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <h2 class="text-white text-center">Seller Dashboard</h2>
-        <a href="{{ url_for('main.home') }}">Home</a>
-        <a href="{{ url_for('main.sell_stamp') }}">Sell Stamp</a>
-        <a href="{{ url_for('main.orders') }}" class="nav-link">Orders</a>
-
-        <a href="{{ url_for('main.buyer_home') }}">Browse Stamps</a>
-        <form action="{{ url_for('auth.logout') }}" method="post">
-            {{ csrf() }}
-            <button type="submit" class="link">Logout</button>
-        </form>
+{% extends "base.html" %}
+{% from "_ui.html" import member_nav, badge with context %}
+{% set active = 'mela' %}
+{% block title %}My listings{% endblock %}
+{% block content %}
+<div class="account">
+    {{ member_nav('listings') }}
+    <div class="stack">
+        <div class="page-head" style="margin-bottom:0">
+            <div><h1>My Listings</h1><p>Manage the stamps you sell in the Stamp Mela.</p></div>
+            <a class="btn" href="{{ url_for('main.sell_stamp') }}">+ Sell a stamp</a>
+        </div>
+        <div class="stat-tiles">
+            <div class="tile"><span>Listed</span><strong>{{ listings|length }} stamp{{ 's' if listings|length != 1 }} listed</strong></div>
+            <div class="tile"><span>Sold so far</span><strong>{{ sold_count }}</strong></div>
+            <div class="tile"><span>Verified</span><strong>{{ listings|selectattr('verification')|selectattr('verification.status', 'equalto', 'verified')|list|length }}</strong></div>
+        </div>
+        <section class="card">
+            {% if listings %}
+            <div class="table-wrap">
+                <table class="table">
+                    <thead><tr><th>Stamp</th><th>Year</th><th>Price</th><th>In stock</th><th>Status</th><th>Verification</th><th></th></tr></thead>
+                    <tbody>
+                    {% for l in listings %}
+                        <tr>
+                            <td><a href="{{ url_for('main.stamp_detail', listing_id=l.id) }}">{{ l.title }}</a></td>
+                            <td>{{ l.year }}</td><td class="nowrap">₹{{ l.price }}</td><td>{{ l.quantity }}</td>
+                            <td>{{ l.status.replace('_', ' ') }}</td><td>{{ badge(l.verification) }}</td>
+                            <td><a class="btn ghost sm" href="{{ url_for('main.edit_stamp', listing_id=l.id) }}">Edit</a></td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div style="text-align:center"><p>You haven't listed any stamps yet.</p><a class="btn" href="{{ url_for('main.sell_stamp') }}">Sell your first stamp</a></div>
+            {% endif %}
+        </section>
     </div>
-
-    <!-- Content Area -->
-    <div class="content">
-        <a class="btn btn-outline-dark account-btn" href="{{ url_for('member.dashboard') }}">Account</a>
-        <h1>Welcome to the Seller Home Page</h1>
-        <p>Here you can manage your stamps, view orders, and more!</p>
-        {{ bootstrap() }}
-
-        <p>{{ listings|length }} stamp{{ 's' if listings|length != 1 }} listed · {{ sold_count }} sold so far</p>
-
-        {% if listings %}
-        <table class="table table-striped bg-white">
-            <thead class="thead-dark">
-                <tr><th>Stamp</th><th>Year</th><th>Price</th><th>In Stock</th><th>Status</th><th>Verification</th><th></th></tr>
-            </thead>
-            <tbody>
-            {% for l in listings %}
-                <tr>
-                    <td><a href="{{ url_for('main.stamp_detail', listing_id=l.id) }}">{{ l.title }}</a></td>
-                    <td>{{ l.year }}</td>
-                    <td>₹{{ l.price }}</td>
-                    <td>{{ l.quantity }}</td>
-                    <td>{{ l.status.replace('_', ' ') }}</td>
-                    <td>{{ badge(l.verification) }}</td>
-                    <td><a href="{{ url_for('main.edit_stamp', listing_id=l.id) }}">Edit</a></td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <p><a class="btn btn-primary" href="{{ url_for('main.sell_stamp') }}">Sell your first stamp</a></p>
-        {% endif %}
-    </div>
-
-    <!-- Optional JavaScript; choose one of the two! -->
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-</body>
-
-</html>
+</div>
+{% endblock %}

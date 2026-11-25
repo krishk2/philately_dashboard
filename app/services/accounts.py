@@ -93,13 +93,16 @@ def user_from_token(token: str) -> User | None:
 
 
 def change_password(user: User, current: str, new: str, confirm: str) -> None:
-    if not user.check_password(current or ""):
+    # Google/Yahoo accounts have never seen their (random) password, so they skip this check
+    # the first time; after that a password exists and must be confirmed like any other.
+    if user.password_set and not user.check_password(current or ""):
         raise ValidationError("Current password is incorrect.")
     if len(new or "") < MIN_PASSWORD_LENGTH:
         raise ValidationError(f"New password must be at least {MIN_PASSWORD_LENGTH} characters.")
     if new != confirm:
         raise ValidationError("New passwords do not match.")
     user.set_password(new)
+    user.password_set = True
     db.session.commit()
 
 

@@ -1,13 +1,15 @@
 """Validated image uploads.
 
-Files are checked by actually decoding them with Pillow (not by trusting the extension),
-then saved under a random name so users cannot overwrite each other's files.
+Files are checked by actually decoding them with Pillow (not by trusting the extension), then
+re-encoded under a random name, so users cannot overwrite each other's files. Re-encoding also
+drops embedded metadata such as the GPS location phones add to photos. Very large photos are
+scaled down. The bytes go to whichever storage backend is configured (local disk or S3).
 """
 
 from __future__ import annotations
 
+import io
 import uuid
-from pathlib import Path
 
 from flask import current_app
 from PIL import Image, UnidentifiedImageError
@@ -15,8 +17,11 @@ from werkzeug.datastructures import FileStorage
 
 from ..verification.imagehash import dhash
 from .errors import ValidationError
+from .storage import get_storage
 
 FORMAT_EXTENSIONS = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp"}
+CONTENT_TYPES = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
+MAX_DIMENSION = 2400  # px; plenty for a stamp photo
 
 
 def save_image(file: FileStorage | None) -> tuple[str, str]:
@@ -32,19 +37,26 @@ def save_image(file: FileStorage | None) -> tuple[str, str]:
         with Image.open(file.stream) as image:
             image.load()
             fmt = image.format
-            image_hash = dhash(image)
             if fmt not in FORMAT_EXTENSIONS:
                 raise ValidationError("Image must be a PNG, JPEG or WebP file.")
-            folder = Path(current_app.config["UPLOAD_FOLDER"])
-            folder.mkdir(parents=True, exist_ok=True)
-            filename = f"{uuid.uuid4().hex}.{FORMAT_EXTENSIONS[fmt]}"
-            image.save(folder / filename, format=fmt)
-    except (UnidentifiedImageError, OSError) as exc:
+            image_hash = dhash(image)
+            if max(image.size) > MAX_DIMENSION:
+                image.thumbnail((MAX_DIMENSION, MAX_DIMENSION))
+            if fmt == "JPEG" and image.mode not in ("RGB", "L"):
+                image = image.convert("RGB")
+            buffer = io.BytesIO()
+            image.save(buffer, format=fmt)
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
         raise ValidationError("The file is not a readable image.") from exc
 
+    filename = f"{uuid.uuid4().hex}.{FORMAT_EXTENSIONS[fmt]}"
+    get_storage().save(filename, buffer.getvalue(), CONTENT_TYPES[fmt])
     return filename, image_hash
 
 
+def read_image(filename: str) -> bytes:
+    return get_storage().read(filename)
+
+
 def delete_image(filename: str) -> None:
-    path = Path(current_app.config["UPLOAD_FOLDER"]) / filename
-    path.unlink(missing_ok=True)
+    get_storage().delete(filename)

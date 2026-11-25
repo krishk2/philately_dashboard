@@ -1,76 +1,33 @@
-{% from "_flash.html" import plain, csrf %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Settings - Postal Circle</title>
-    <!-- Link to CSS file in Flask's static folder -->
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles_for_settings.css') }}">
-</head>
-<body>
-    <div class="container">
-        <aside class="sidebar">
-            <div class="logo-section">
-                <!-- Use static URL for images -->
-                <img src="{{ url_for('static', filename='India-Post_Preview.png') }}" alt="Postal Circle Logo" class="logo">
-                <h1>Postal Circle Dashboard</h1>
+{% extends "base.html" %}
+{% from "_ui.html" import circle_nav, csrf with context %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<div class="account">
+    {{ circle_nav('settings') }}
+    <div class="stack">
+        <div class="page-head" style="margin-bottom:0"><div><h1>Settings</h1><p>Postal circle account.</p></div></div>
+        <form class="card form" method="POST" action="{{ url_for('circle.update_profile') }}">
+            {{ csrf() }}
+            <h2>Profile settings</h2>
+            <div class="form-grid">
+                <div><label for="username">Username</label><input type="text" id="username" value="{{ current_user.username }}" disabled></div>
+                <div><label for="postalCircle">Postal circle</label><input type="text" id="postalCircle" value="{{ current_user.postal_circle }}" disabled></div>
             </div>
-            <ul class="nav-links">
-                <li><a href="{{ url_for('circle.dashboard') }}">Dashboard</a></li>
-                <li><a href="{{ url_for('circle.manage_stamps') }}">Manage Stamps</a></li>
-                <li><a href="{{ url_for('circle.events') }}">Events</a></li>
-                <li><a href="{{ url_for('circle.settings') }}" class="active">Settings</a></li>
-                <li><a href="{{ url_for('community.forums', category='help') }}">Help & Support</a></li>
-            </ul>
-            <form action="{{ url_for('auth.logout') }}" method="post">
-                {{ csrf() }}
-                <button type="submit" class="logout-button">Logout</button>
-            </form>
-        </aside>
-
-        <div class="main-content">
-            <header class="dashboard-header">
-                <h2>Settings</h2>
-            </header>
-
-            {{ plain() }}
-
-            <section class="settings-section">
-                <h3>Profile Settings</h3>
-                <form id="profileForm" method="POST" action="{{ url_for('circle.update_profile') }}">
-                    {{ csrf() }}
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" value="{{ current_user.username }}" disabled>
-
-                    <label for="email">Email</label>
-                    <input type="email" id="email" name="email" value="{{ current_user.email }}" required>
-
-                    <label for="postalCircle">Postal Circle</label>
-                    <input type="text" id="postalCircle" name="postalCircle" value="{{ current_user.postal_circle }}" disabled>
-
-                    <button type="submit" class="save-button">Save Changes</button>
-                </form>
-
-                <h3>Password Settings</h3>
-                <form id="passwordForm" method="POST" action="{{ url_for('circle.update_password') }}">
-                    {{ csrf() }}
-                    <label for="currentPassword">Current Password</label>
-                    <input type="password" id="currentPassword" name="currentPassword" required autocomplete="current-password">
-
-                    <label for="newPassword">New Password</label>
-                    <input type="password" id="newPassword" name="newPassword" minlength="8" required autocomplete="new-password">
-
-                    <label for="confirmPassword">Confirm New Password</label>
-                    <input type="password" id="confirmPassword" name="confirmPassword" minlength="8" required autocomplete="new-password">
-
-                    <button type="submit" class="save-button">Update Password</button>
-                </form>
-            </section>
-        </div>
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" value="{{ current_user.email }}" required>
+            <div class="actions"><button type="submit" class="btn">Save changes</button></div>
+        </form>
+        <form class="card form" method="POST" action="{{ url_for('circle.update_password') }}">
+            {{ csrf() }}
+            <h2>Password settings</h2>
+            <label for="currentPassword">Current password</label>
+            <input type="password" id="currentPassword" name="currentPassword" required autocomplete="current-password">
+            <div class="form-grid">
+                <div><label for="newPassword">New password</label><input type="password" id="newPassword" name="newPassword" minlength="8" required autocomplete="new-password"></div>
+                <div><label for="confirmPassword">Confirm new password</label><input type="password" id="confirmPassword" name="confirmPassword" minlength="8" required autocomplete="new-password"></div>
+            </div>
+            <div class="actions"><button type="submit" class="btn">Update password</button></div>
+        </form>
     </div>
-    <!-- Link to JavaScript file in Flask's static folder -->
-    <script src="{{ url_for('static', filename='script_for_settings.js') }}"></script>
-</body>
-</html>
+</div>
+{% endblock %}

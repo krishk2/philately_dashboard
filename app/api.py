@@ -17,7 +17,7 @@ from flask import Blueprint, current_app, g, jsonify, request
 from sqlalchemy import select
 from werkzeug.exceptions import HTTPException
 
-from .extensions import csrf, db
+from .extensions import csrf, db, limiter
 from .models import LISTING_REMOVED, Event, Issue, Listing, Order
 from .services import marketplace as svc
 from .services.accounts import authenticate, issue_token, user_from_token
@@ -79,6 +79,7 @@ class _NotFound(DomainError):
 
 
 @bp.post("/auth/token")
+@limiter.limit("10 per minute;50 per hour")
 def create_token():
     body = _payload()
     user = authenticate(body.get("username", ""), body.get("password", ""))
@@ -217,6 +218,8 @@ def prebook(issue_id):
             "id": booking.id,
             "issue_id": booking.issue_id,
             "quantity": booking.quantity,
+            "status": booking.status,
+            "expires_at": booking.expires_at.isoformat() if booking.expires_at else None,
             "remaining": booking.issue.prebook_available,
         }
     ), 201

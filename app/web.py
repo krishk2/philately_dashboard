@@ -22,7 +22,7 @@ from flask import (
 from flask_login import current_user, login_required
 from sqlalchemy import func, select
 
-from .extensions import csrf, db
+from .extensions import csrf, db, limiter
 from .models import (
     FEED_EVENT,
     FEED_NEWS,
@@ -35,11 +35,13 @@ from .models import (
     Listing,
     Order,
     Prebooking,
+    User,
     WishlistItem,
 )
 from .services import assistant, feeds
 from .services import marketplace as svc
 from .services.errors import DomainError
+from .services.storage import get_storage
 
 bp = Blueprint("main", __name__)
 
@@ -80,6 +82,92 @@ def _visible_listing(listing_id: int) -> Listing:
 # ---------- community pages ----------
 
 
+# Shown in the carousel only when there's no live data yet (the original v1 showcase).
+SHOWCASE = [
+    (
+        "wild.jpg",
+        "Commemorative Stamp on Wildlife Conservation",
+        "Celebrating wildlife preservation.",
+    ),
+    ("fest.jpg", "First Day Cover: Indian Festivals", "India's festivals on a First Day Cover."),
+    (
+        "cancellation.jpg",
+        "Special Cancellation: Freedom Fighters",
+        "Honouring India's freedom fighters.",
+    ),
+    ("monuments.jpg", "Historic Monuments", "The Taj Mahal, Qutub Minar and more."),
+    ("bird.jpg", "Birds of India", "India's diverse bird species."),
+    ("yuri.jpg", "Space Exploration", "India's achievements in space."),
+]
+
+
+def _fmt_value(value) -> str:
+    if value is None:
+        return ""
+    return f"₹{int(value)}" if value == int(value) else f"₹{value}"
+
+
+def carousel_items(limit: int = 12) -> list[dict]:
+    """Latest releases for the home carousel: circles' own issues plus India Post's releases.
+
+    India Post's stamp images are used only when FEED_SHOW_SOURCE_IMAGES is enabled (it needs
+    Department of Posts permission); otherwise those releases are drawn as stamp cards.
+    """
+    show_source_images = current_app.config.get("FEED_SHOW_SOURCE_IMAGES")
+    items = []
+    for issue in db.session.scalars(select(Issue).order_by(Issue.issue_date.desc()).limit(6)):
+        items.append(
+            {
+                "kicker": f"{issue.circle.postal_circle} Circle",
+                "title": issue.title,
+                "desc": issue.description or "Official issue from the postal circle.",
+                "value": _fmt_value(issue.denomination),
+                "date": issue.issue_date,
+                "image": url_for("main.uploaded_file", filename=issue.reference_image),
+                "link": url_for("main.pre_book", issue_id=issue.id),
+                "cta": "Pre-book" if issue.prebook_available else "View",
+                "external": False,
+            }
+        )
+    for item in feeds.latest(FEED_RELEASE, limit):
+        count = item.stamp_count or 1
+        items.append(
+            {
+                "kicker": "India Post release",
+                "title": item.title,
+                "desc": (f"Set of {count} stamps" if count > 1 else "Commemorative postage stamp")
+                + (
+                    f" · released {item.published_on.strftime('%d %b %Y')}"
+                    if item.published_on
+                    else ""
+                ),
+                "value": _fmt_value(item.denomination),
+                "date": item.published_on,
+                "image": item.image_url if (show_source_images and item.image_url) else None,
+                "link": item.url,
+                "cta": "View on India Post",
+                "external": True,
+            }
+        )
+    items.sort(key=lambda i: i["date"] or date.min, reverse=True)
+    if not items:
+        items = [
+            {
+                "kicker": "Showcase",
+                "title": title,
+                "desc": desc,
+                "value": "",
+                "date": None,
+                "image": url_for("static", filename=image),
+                "link": url_for("main.buyer_home"),
+                "cta": "Browse the Mela",
+                "external": False,
+            }
+            for image, title, desc in SHOWCASE
+        ]
+    return items[:limit]
+
+
 @bp.route("/home")
 def home():
     today = date.today()
@@ -90,9 +178,21 @@ def home():
     news = db.session.scalars(
         select(CircleUpdate).order_by(CircleUpdate.created_at.desc()).limit(5)
     ).all()
+    counts = {
+        "listings": db.session.scalar(
+            select(func.count(Listing.id)).where(Listing.status == LISTING_ACTIVE)
+        ),
+        "collectors": db.session.scalar(
+            select(func.count(User.id)).where(User.role == "collector")
+        ),
+        "issues": db.session.scalar(select(func.count(Issue.id))),
+    }
     # Headlines imported by `flask import-feeds` (India Post, Rainbow Stamp News, extra RSS).
     return render_template(
         "landing.html",
+        carousel=carousel_items(),
+        latest_listings=db.session.scalars(svc.search_listings().limit(4)).all(),
+        counts=counts,
         events=events,
         releases=releases,
         news=news,
@@ -111,6 +211,7 @@ def stamp_museum():
 
 
 @bp.post("/ask")
+@limiter.limit("10 per minute;100 per day")
 @csrf.exempt  # read-only JSON endpoint: it changes no state, so there is nothing to forge
 def ask():
     body = request.get_json(silent=True) or {}
@@ -119,6 +220,9 @@ def ask():
 
 @bp.route("/uploads/<path:filename>")
 def uploaded_file(filename):
+    storage = get_storage()
+    if storage.is_remote:  # S3 / R2 / B2: send the browser to the bucket (or CDN)
+        return redirect(storage.url(filename), code=302)
     return send_from_directory(current_app.config["UPLOAD_FOLDER"], filename, max_age=86400)
 
 
@@ -127,6 +231,7 @@ def uploaded_file(filename):
 
 @bp.route("/stamp_store")
 def stamp_store():
+    svc.expire_stale_prebookings()
     issues = db.session.scalars(select(Issue).order_by(Issue.issue_date.desc())).all()
     npda = current_user.npda if current_user.is_authenticated else None
     return render_template("stamp_store.html", issues=issues, npda=npda)
@@ -136,6 +241,7 @@ def stamp_store():
 @bp.route("/pre_book/<int:issue_id>")
 @collector_required
 def pre_book(issue_id=None):
+    svc.expire_stale_prebookings()
     issues = db.session.scalars(
         select(Issue).where(Issue.prebook_available > 0).order_by(Issue.issue_date.desc())
     ).all()
@@ -154,14 +260,50 @@ def submit_order():
     return redirect(url_for("main.payment", booking_id=booking.id))
 
 
-@bp.route("/payment/<int:booking_id>")
-@collector_required
-def payment(booking_id):
+def _own_booking(booking_id: int) -> Prebooking:
     booking = db.get_or_404(Prebooking, booking_id)
     if booking.user_id != current_user.id:
         abort(404)
-    total = booking.issue.denomination * booking.quantity
-    return render_template("payment.html", booking=booking, total_amount=total)
+    return booking
+
+
+@bp.route("/payment/<int:booking_id>", methods=["GET", "POST"])
+@collector_required
+@limiter.limit("10 per minute", methods=["POST"])
+def payment(booking_id):
+    booking = _own_booking(booking_id)
+    svc.expire_stale_prebookings()
+    db.session.refresh(booking)
+    if request.method == "POST":
+        card = {
+            "number": request.form.get("cardNumber"),
+            "expiry": request.form.get("expiryDate"),
+            "cvv": request.form.get("cvv"),
+        }
+        try:
+            svc.pay_prebooking(current_user, booking, card)
+        except DomainError as exc:
+            flash(exc.message, "error")
+            return render_template("payment.html", booking=booking), exc.status_code
+        flash(
+            f"Payment successful! {booking.quantity} × '{booking.issue.title}' is confirmed "
+            f"(ref {booking.payment_ref}).",
+            "success",
+        )
+        return redirect(url_for("member.my_collection"))
+    return render_template("payment.html", booking=booking)
+
+
+@bp.post("/payment/<int:booking_id>/cancel")
+@collector_required
+def cancel_booking(booking_id):
+    booking = _own_booking(booking_id)
+    try:
+        svc.cancel_prebooking(current_user, booking)
+        flash("Pre-booking cancelled and the copies released.", "success")
+    except DomainError as exc:
+        flash(exc.message, "error")
+    return redirect(url_for("main.stamp_store"))
 
 
 # ---------- Stamp Mela marketplace ----------
@@ -169,7 +311,7 @@ def payment(booking_id):
 
 @bp.route("/stamp_mela")
 def stamp_mela():
-    return render_template("index.html")
+    return redirect(url_for("main.buyer_home"))
 
 
 @bp.post("/submit")

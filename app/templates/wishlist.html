@@ -1,43 +1,22 @@
-{% from "_flash.html" import bootstrap, badge %}
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Your Wishlist</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-
-<body>
-    <div class="container">
-        <a href="{{ url_for('main.buyer_home') }}">&larr; Back to Stamp Collection</a>
-        <h1>Your Wishlist</h1>
-        {{ bootstrap() }}
-        <div class="row">
+{% extends "base.html" %}
+{% from "_ui.html" import member_nav, listing_card with context %}
+{% set active = 'mela' %}
+{% block title %}Wishlist{% endblock %}
+{% block content %}
+<div class="account">
+    {{ member_nav('wishlist') }}
+    <div>
+        <div class="page-head"><div><h1>Your Wishlist</h1><p>Stamps you've saved. Tap ❤️ to remove one.</p></div></div>
+        <div class="grid">
             {% for stamp in wishlist %}
-            <div class="col-md-3">
-                <div class="card">
-                    <a href="{{ url_for('main.stamp_detail', listing_id=stamp.id) }}">
-                        <img src="{{ url_for('main.uploaded_file', filename=stamp.image_filename) }}" class="card-img-top"
-                            alt="{{ stamp.title }}">
-                    </a>
-                    <div class="card-body">
-                        <h5 class="card-title">{{ stamp.title }}</h5>
-                        <p class="card-price">₹{{ stamp.price }}{% if stamp.status != 'active' %} · no longer available{% endif %}</p>
-                        <p class="card-description">{{ stamp.description }}</p>
-                        <p>{{ badge(stamp.verification) }}</p>
-                        <span role="button" title="Remove from wishlist" onclick="likeStamp('{{ stamp.id }}', this)">❤️</span>
-                    </div>
-                </div>
-            </div>
+                {{ listing_card(stamp, liked=True) }}
             {% else %}
-            <p>Your wishlist is empty. Tap 🤍 on a stamp to save it here.</p>
+                <div class="card" style="grid-column:1/-1;text-align:center">
+                    <p>Your wishlist is empty. Tap 🤍 on a stamp to save it here.</p>
+                    <a class="btn" href="{{ url_for('main.buyer_home') }}">Browse the Stamp Mela</a>
+                </div>
             {% endfor %}
         </div>
     </div>
-    <script src="{{ url_for('static', filename='script_for_wishlist.js') }}"></script>
-</body>
-
-</html>
+</div>
+{% endblock %}

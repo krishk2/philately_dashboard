@@ -31,6 +31,7 @@ from urllib.parse import urljoin, urlsplit
 
 import feedparser
 import requests
+from requests.utils import requote_uri
 from bs4 import BeautifulSoup
 from flask import current_app
 from sqlalchemy import select
@@ -63,6 +64,7 @@ class Item:
     denomination: Decimal | None = None
     stamp_count: int | None = None
     summary: str = ""
+    image_url: str | None = None
 
 
 @dataclass
@@ -157,6 +159,21 @@ def parse_india_post(page: str, base_url: str = INDIA_POST_URL) -> list[Item]:
     return items
 
 
+def parse_india_post_detail(page: str, base_url: str) -> str | None:
+    """Image URL of the stamp on a release page (the 'Stamp' image, else the first upload)."""
+    soup = BeautifulSoup(page, "html.parser")
+    uploads = [
+        img.get("src")
+        for img in soup.find_all("img")
+        if "uploads/" in (img.get("src") or "").lower()
+        and (img.get("alt") or "").lower() != "banner"
+    ]
+    if not uploads:
+        return None
+    stamp = next((src for src in uploads if "stamp" in src.lower().rsplit("/", 1)[-1]), uploads[0])
+    return requote_uri(urljoin(base_url, stamp))  # encode spaces etc. in file names
+
+
 def _plain_text(markup: str, limit: int = 280) -> str:
     text = " ".join(BeautifulSoup(markup or "", "html.parser").get_text(" ").split())
     text = html.unescape(text)
@@ -235,7 +252,32 @@ def _save(source: Source, items: list[Item], result: SourceResult) -> None:
         row.denomination = item.denomination
         row.stamp_count = item.stamp_count
         row.summary = item.summary
+        if item.image_url:
+            row.image_url = item.image_url
         row.fetched_at = utcnow()
+
+
+def _add_release_images(source: Source, items: list[Item], fetcher) -> None:
+    """Fetch the detail page of *new* releases (capped per run) to record the stamp image URL.
+    Pages already imported aren't fetched again, so a run makes few extra requests."""
+    known = set(
+        db.session.scalars(
+            select(FeedItem.external_id).where(
+                FeedItem.source == source.name, FeedItem.image_url.is_not(None)
+            )
+        )
+    )
+    budget = current_app.config.get("FEED_DETAIL_FETCH_LIMIT", 10)
+    for item in items:
+        if budget <= 0:
+            break
+        if item.kind != FEED_RELEASE or item.external_id in known:
+            continue
+        budget -= 1
+        try:
+            item.image_url = parse_india_post_detail(fetcher(item.url), item.url)
+        except Exception as exc:  # noqa: BLE001 - a missing image never fails the import
+            log.info("No image for %s: %s", item.url, exc)
 
 
 def import_source(source: Source, fetcher=fetch) -> SourceResult:
@@ -244,6 +286,7 @@ def import_source(source: Source, fetcher=fetch) -> SourceResult:
         content = fetcher(source.url)
         if source.parser == "india_post":
             items = parse_india_post(content, source.url)
+            _add_release_images(source, items, fetcher)
         else:
             items = parse_rss(content, source.kind)
         _save(source, items, result)

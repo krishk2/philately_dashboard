@@ -1,213 +1,169 @@
-{% from "_site.html" import site_header, site_footer, site_flash with context %}
-{% macro feed_note() -%}
-{% if feeds_updated %}<p style="font-size:13px;color:#777;margin-top:15px">Headlines marked India Post or Rainbow Stamp News are imported automatically and link to the original source. Last updated {{ feeds_updated.strftime('%d %b %Y, %H:%M') }} UTC.</p>{% endif %}
-{%- endmacro %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>National Philatelic Community</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles_for_home.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='site_layout.css') }}">
-</head>
-<body class="site">
+{% extends "base.html" %}
+{% from "_ui.html" import listing_card, stamp_art with context %}
+{% set active = 'home' %}
+{% block title %}Home{% endblock %}
 
-{{ site_header('home') }}
-<div style="max-width:1150px;margin:15px auto 0;padding:0 20px">{{ site_flash() }}</div>
-
-<!-- Carousel Slider Section -->
-<section class="carousel-section">
-    <h2>On-Demand Stamps and Ancillaries</h2>
-    <div class="carousel-container">
-        <button class="carousel-btn prev-btn">&#10094;</button>
-        <div class="carousel">
-            <div class="carousel-item">
-                <img src="{{ url_for('static', filename='wild.jpg') }}" alt="Commemorative Stamp">
-                <h3>Commemorative Stamp on Wildlife Conservation</h3>
-                <p>This stamp celebrates the efforts in wildlife preservation. Limited edition release.</p>
-                <button class="buy-now" onclick="location.href='{{ url_for('main.buyer_home') }}'">Buy Now</button>
+{% block full %}
+<section class="hero">
+    <div class="inner">
+        <div>
+            <h1>India's stamp collectors, in one place.</h1>
+            <p>Pre-book new issues from the postal circles, buy and sell in the Stamp Mela with every listing checked, and meet collectors who share your interests.</p>
+            <div class="row" style="margin-top:18px">
+                <a class="btn" href="{{ url_for('main.stamp_store') }}">Explore new issues</a>
+                <a class="btn ghost" href="{{ url_for('main.buyer_home') }}">Browse the Stamp Mela</a>
             </div>
-            <div class="carousel-item">
-                <img src="{{ url_for('static', filename='fest.jpg') }}" alt="First Day Cover">
-                <h3>First Day Cover - Indian Festivals</h3>
-                <p>A beautiful FDC showcasing the rich cultural heritage of Indian festivals.</p>
-                <button class="buy-now" onclick="location.href='{{ url_for('main.buyer_home') }}'">Buy Now</button>
-            </div>
-            <div class="carousel-item">
-                <img src="{{ url_for('static', filename='cancellation.jpg') }}" alt="Special Cancellation">
-                <h3>Special Cancellation - Freedom Fighters</h3>
-                <p>Special postal cancellations commemorating India's freedom fighters.</p>
-                <button class="buy-now" onclick="location.href='{{ url_for('main.buyer_home') }}'">Buy Now</button>
-            </div>
-            <div class="carousel-item">
-                <img src="{{ url_for('static', filename='monuments.jpg') }}" alt="Historic Monuments Stamp">
-                <h3>Special Stamp - Historic Monuments</h3>
-                <p>Featuring iconic monuments like the Taj Mahal, Qutub Minar, and more.</p>
-                <button class="buy-now" onclick="location.href='{{ url_for('main.buyer_home') }}'">Buy Now</button>
-            </div>
-            <div class="carousel-item">
-                <img src="{{ url_for('static', filename='art.jpg') }}" alt="Traditional Art Stamp">
-                <h3>Traditional Indian Art Stamps</h3>
-                <p>Beautiful stamps showcasing various traditional art forms of India.</p>
-                <button class="buy-now" onclick="location.href='{{ url_for('main.buyer_home') }}'">Buy Now</button>
-            </div>
-            <div class="carousel-item">
-                <img src="{{ url_for('static', filename='bird.jpg') }}" alt="Birds of India Stamp">
-                <h3>Birds of India Stamp Series</h3>
-                <p>A vibrant series of stamps depicting India's diverse bird species.</p>
-                <button class="buy-now" onclick="location.href='{{ url_for('main.buyer_home') }}'">Buy Now</button>
-            </div>
-            <div class="carousel-item">
-                <img src="{{ url_for('static', filename='yuri.jpg') }}" alt="Space Exploration Stamp">
-                <h3>Space Exploration Stamps</h3>
-                <p>Exploring the final frontier with stamps depicting India's achievements in space.</p>
-                <button class="buy-now" onclick="location.href='{{ url_for('main.buyer_home') }}'">Buy Now</button>
-            </div>
-            <div class="carousel-item">
-                <img src="{{ url_for('static', filename='wild.webp') }}" alt="Wildlife Conservation Stamp Series">
-                <h3>Wildlife Conservation Stamp Series</h3>
-                <p>Support wildlife conservation efforts with this special stamp series.</p>
-                <button class="buy-now" onclick="location.href='{{ url_for('main.buyer_home') }}'">Buy Now</button>
-            </div>
-            <div class="carousel-item">
-                <img src="{{ url_for('static', filename='famous.jpg') }}" alt="Famous Personalities Stamp Series">
-                <h3>Famous Personalities Stamp Series</h3>
-                <p>A tribute to renowned personalities who have shaped India's history and culture.</p>
-                <button class="buy-now" onclick="location.href='{{ url_for('main.buyer_home') }}'">Buy Now</button>
-            </div>
-            <div class="carousel-item">
-                <img src="{{ url_for('static', filename='festi.jpg') }}" alt="Festivals of India Stamp Series">
-                <h3>Festivals of India Stamp Series</h3>
-                <p>Experience the vibrant festivals of India through this colorful stamp series.</p>
-                <button class="buy-now" onclick="location.href='{{ url_for('main.buyer_home') }}'">Buy Now</button>
+            <div class="stats">
+                <div><strong>{{ counts.issues }}</strong><span>official issues</span></div>
+                <div><strong>{{ counts.listings }}</strong><span>stamps for sale</span></div>
+                <div><strong>{{ counts.collectors }}</strong><span>collectors</span></div>
             </div>
         </div>
-        <button class="carousel-btn next-btn">&#10095;</button>
+        <div class="hero-card">
+            <h3>Looking for a particular stamp?</h3>
+            <form class="form" action="{{ url_for('main.search') }}" method="get">
+                <input type="search" name="search" placeholder="e.g. Gandhi, Taj Mahal, birds" required aria-label="Search stamps">
+                <div class="actions"><button class="btn block" type="submit">Search the Stamp Mela</button></div>
+            </form>
+        </div>
     </div>
 </section>
 
-<!-- Philately Updates Section -->
-<div class="tabs-container">
-    <!-- Tab buttons as radio inputs -->
-    <input type="radio" name="tabs" id="tab-upcoming" checked>
-    <label for="tab-upcoming" class="tab-label">Upcoming Stamp Releases</label>
+<div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}<div class="alert {{ category if category in ('success', 'error', 'warning') else 'info' }}">{{ message }}</div>{% endfor %}
+    {% endwith %}
 
-    <input type="radio" name="tabs" id="tab-events">
-    <label for="tab-events" class="tab-label">Philatelic Events</label>
-
-    <input type="radio" name="tabs" id="tab-news">
-    <label for="tab-news" class="tab-label">Latest Philately News</label>
-
-    <!-- Tab content sections -->
-    <div class="tab-content" id="upcoming-releases">
-        <h2>Upcoming Stamp Releases</h2>
-        {% for issue in releases %}
-        <div class="news-item">
-            <span class="date">({{ issue.issue_date.strftime('%d.%m.%Y') }})</span>
-            <span class="postal-circle">{{ issue.circle.postal_circle }} Postal Circle</span> -
-            <a href="{{ url_for('main.pre_book', issue_id=issue.id) }}">Release of {{ issue.title }} (₹{{ issue.denomination }})</a>
-        </div>
-        {% endfor %}
-        {% for item in feed_releases %}
-        <div class="news-item">
-            <span class="date">({{ item.published_on.strftime('%d.%m.%Y') if item.published_on else 'date n/a' }})</span>
-            <span class="postal-circle">{{ item.source_label }}</span> -
-            <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}{% if item.denomination %} (₹{{ item.denomination|int if item.denomination == item.denomination|int else item.denomination }}{% if item.stamp_count and item.stamp_count > 1 %} × {{ item.stamp_count }} stamps{% endif %}){% endif %}</a>
-        </div>
-        {% endfor %}
-        {% if not releases and not feed_releases %}
-        <div class="news-item">No stamp releases announced yet.</div>
-        {% endif %}
-        {{ feed_note() }}
-    </div>
-
-    <div class="tab-content" id="events">
-        <h2>Philatelic Events</h2>
-        <!-- <div class="news-item">
-            <span class="date">(06.07.2024)</span>
-            <a href="#">National Philately Exhibition in New Delhi</a>
-        </div>
-        <div class="news-item">
-            <span class="date">(26.02.2024)</span>
-            <a href="#">Workshop on Stamp Collecting Techniques</a>
-        </div> -->
-        <section class="events">
-            <h2>Upcoming Events</h2>
-
-            <!-- Loop through the events passed to this template -->
-            {% if events %}
-                <ul>
-                    {% for event in events %}
-                        <li>
-                            <h3>{{ event.name }}</h3>
-                            <p><strong>Date:</strong> {{ event.date.strftime('%d.%m.%Y') }} ({{ event.circle.postal_circle }} Postal Circle)</p>
-                            <p><strong>Location:</strong> {{ event.location }}</p>
-                            <p>{{ event.description }}</p>
-                        </li>
-                    {% endfor %}
-                </ul>
-            {% elif not feed_events %}
-                <p>No events available at the moment.</p>
-            {% endif %}
-            {% for item in feed_events %}
-            <div class="news-item">
-                <span class="date">({{ item.published_on.strftime('%d.%m.%Y') if item.published_on else 'date n/a' }})</span>
-                <span class="postal-circle">{{ item.source_label }}</span> -
-                <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a>
+    <section class="section" style="margin-top:8px">
+        <div class="section-head">
+            <div>
+                <h2>New Stamp Releases</h2>
+                <p class="muted" style="margin:0">The latest issues from the postal circles and India Post.</p>
             </div>
-            {% endfor %}
-        </section>
-    </div>
-
-    <div class="tab-content" id="latest-news">
-        <h2>Latest Philately News</h2>
-        {% for update in news %}
-        <div class="news-item">
-            <span class="date">({{ update.created_at.strftime('%d.%m.%Y') }})</span>
-            <span class="postal-circle">{{ update.circle.postal_circle }} Postal Circle</span> -
-            <strong>{{ update.kind_label }}: {{ update.title }}</strong>
-            <p>{{ update.content }}</p>
+            <a href="{{ url_for('main.stamp_store') }}">All issues →</a>
         </div>
-        {% endfor %}
-        {% for item in feed_news %}
-        <div class="news-item">
-            <span class="date">({{ item.published_on.strftime('%d.%m.%Y') if item.published_on else 'date n/a' }})</span>
-            <span class="postal-circle">{{ item.source_label }}</span> -
-            <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a>
-            {% if item.summary and item.summary != item.title %}<p>{{ item.summary }}</p>{% endif %}
+        <div class="carousel" data-carousel>
+            <button class="carousel-btn prev" type="button" aria-label="Previous">‹</button>
+            <div class="carousel-track">
+                {% for c in carousel %}
+                <article class="item">
+                    <div class="media">
+                        {% if c.image %}<img src="{{ c.image }}" alt="{{ c.title }}" loading="lazy" {% if c.external %}referrerpolicy="no-referrer"{% endif %}>
+                        {% else %}{{ stamp_art(c.title, c.value, 'teal' if loop.index is even else '') }}{% endif %}
+                    </div>
+                    <div class="body">
+                        <span class="kicker">{{ c.kicker }}</span>
+                        <h3 class="title">{{ c.title }}</h3>
+                        <p class="desc">{{ c.desc }}</p>
+                        <div class="foot">
+                            <span class="price">{{ c.value }}</span>
+                            <a class="btn sm {{ 'ghost' if c.external }}" href="{{ c.link }}" {% if c.external %}target="_blank" rel="noopener"{% endif %}>{{ c.cta }}</a>
+                        </div>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+            <button class="carousel-btn next" type="button" aria-label="Next">›</button>
+            <div class="carousel-dots" aria-label="Slides"></div>
         </div>
-        {% endfor %}
-        {% if not news and not feed_news %}
-        <div class="news-item">No news posted yet.</div>
-        {% endif %}
-        {{ feed_note() }}
-    </div>
-</div>
+    </section>
 
-<!-- NPDA Account Prompt -->
-<section class="npda-account">
-    {% if current_user.is_authenticated and current_user.npda and current_user.npda.is_active %}
-    <p>Your NPDA account {{ current_user.npda.account_number }} has ₹{{ current_user.npda.balance }}. New issues are reserved for you automatically. <button class="create-account" onclick="location.href='{{ url_for('member.npda') }}'">Manage</button></p>
-    {% elif current_user.is_authenticated and current_user.is_circle %}
-    <p>Collectors with an NPDA account get your new issues reserved automatically the moment you publish them.</p>
-    {% else %}
-    <p>Don't you have an NPDA account? <button class="create-account" onclick="location.href='{{ url_for('member.npda') }}'">Create One</button></p>
+    <section class="section split">
+        <div class="card tabs">
+            <input type="radio" name="tabs" id="tab-releases" checked>
+            <input type="radio" name="tabs" id="tab-events">
+            <input type="radio" name="tabs" id="tab-news">
+            <div class="tab-labels" role="tablist">
+                <label for="tab-releases">Upcoming Stamp Releases</label>
+                <label for="tab-events">Philatelic Events</label>
+                <label for="tab-news">Latest Philately News</label>
+            </div>
+
+            <div class="panel" id="panel-releases">
+                {% for issue in releases %}
+                <div class="feed-row">
+                    <span class="date">{{ issue.issue_date.strftime('%d.%m.%Y') }}</span>
+                    <div><span class="source">{{ issue.circle.postal_circle }} Postal Circle</span><br>
+                        <a href="{{ url_for('main.pre_book', issue_id=issue.id) }}">Release of {{ issue.title }} (₹{{ issue.denomination }})</a></div>
+                </div>
+                {% endfor %}
+                {% for item in feed_releases %}
+                <div class="feed-row">
+                    <span class="date">{{ item.published_on.strftime('%d.%m.%Y') if item.published_on else '' }}</span>
+                    <div><span class="source">{{ item.source_label }}</span><br>
+                        <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}{% if item.denomination %} (₹{{ item.denomination|int if item.denomination == item.denomination|int else item.denomination }}{% if item.stamp_count and item.stamp_count > 1 %} × {{ item.stamp_count }} stamps{% endif %}){% endif %}</a></div>
+                </div>
+                {% endfor %}
+                {% if not releases and not feed_releases %}<p class="muted">No stamp releases announced yet.</p>{% endif %}
+            </div>
+
+            <div class="panel" id="panel-events">
+                {% for event in events %}
+                <div class="feed-row">
+                    <span class="date">{{ event.date.strftime('%d.%m.%Y') }}</span>
+                    <div><span class="source">{{ event.circle.postal_circle }} Postal Circle</span><br>
+                        <strong>{{ event.name }}</strong> · {{ event.location }}
+                        {% if event.description %}<div class="muted small">{{ event.description }}</div>{% endif %}</div>
+                </div>
+                {% endfor %}
+                {% for item in feed_events %}
+                <div class="feed-row">
+                    <span class="date">{{ item.published_on.strftime('%d.%m.%Y') if item.published_on else '' }}</span>
+                    <div><span class="source">{{ item.source_label }}</span><br><a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a></div>
+                </div>
+                {% endfor %}
+                {% if not events and not feed_events %}<p class="muted">No events available at the moment.</p>{% endif %}
+            </div>
+
+            <div class="panel" id="panel-news">
+                {% for update in news %}
+                <div class="feed-row">
+                    <span class="date">{{ update.created_at.strftime('%d.%m.%Y') }}</span>
+                    <div><span class="source">{{ update.circle.postal_circle }} Postal Circle</span><br>
+                        <strong>{{ update.kind_label }}: {{ update.title }}</strong>
+                        <div class="muted small">{{ update.content }}</div></div>
+                </div>
+                {% endfor %}
+                {% for item in feed_news %}
+                <div class="feed-row">
+                    <span class="date">{{ item.published_on.strftime('%d.%m.%Y') if item.published_on else '' }}</span>
+                    <div><span class="source">{{ item.source_label }}</span><br>
+                        <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a>
+                        {% if item.summary and item.summary != item.title %}<div class="muted small">{{ item.summary }}</div>{% endif %}</div>
+                </div>
+                {% endfor %}
+                {% if not news and not feed_news %}<p class="muted">No news posted yet.</p>{% endif %}
+            </div>
+            {% if feeds_updated %}<p class="muted small" style="margin:12px 0 0">Headlines from India Post and Rainbow Stamp News are imported automatically and link to the original source. Last updated {{ feeds_updated.strftime('%d %b %Y, %H:%M') }} UTC.</p>{% endif %}
+        </div>
+
+        <aside class="stack">
+            {% set npda = current_user.npda if current_user.is_authenticated and not current_user.is_circle else None %}
+            <div class="card">
+                <h3>NPDA account</h3>
+                {% if npda and npda.is_active %}
+                    <p>Account <strong>{{ npda.account_number }}</strong> · balance <strong>₹{{ npda.balance }}</strong>. New issues are reserved for you automatically.</p>
+                    <a class="btn navy" href="{{ url_for('member.npda') }}">Manage account</a>
+                {% elif current_user.is_authenticated and current_user.is_circle %}
+                    <p class="muted">Collectors with an NPDA account get your new issues reserved automatically the moment you publish them.</p>
+                {% else %}
+                    <p class="muted">Don't you have an NPDA account? Keep a balance and every new issue is reserved for you the moment it's released.</p>
+                    <a class="btn navy" href="{{ url_for('member.npda') }}">Create one</a>
+                {% endif %}
+            </div>
+            <div class="card">
+                <h3>New to philately?</h3>
+                <p class="muted">A four-week crash course from your first stamp to a confident collector.</p>
+                <a class="btn ghost" href="{{ url_for('community.crash_course') }}">Start the course</a>
+            </div>
+        </aside>
+    </section>
+
+    {% if latest_listings %}
+    <section class="section">
+        <div class="section-head"><h2>Fresh in the Stamp Mela</h2><a href="{{ url_for('main.buyer_home') }}">See all →</a></div>
+        <div class="grid">{% for l in latest_listings %}{{ listing_card(l, show_like=False) }}{% endfor %}</div>
+    </section>
     {% endif %}
-</section>
-
-<!-- Search Section -->
-<form class="search-section" action="{{ url_for('main.search') }}" method="get">
-    <p>Looking for a particular stamp?</p>
-    <input type="text" name="search" placeholder="Search for stamps..." required>
-    <button class="search-button" type="submit">Search</button>
-</form>
-
-{{ site_footer() }}
-
-<script src="{{ url_for('static', filename='script_for_home.js') }}"></script>
-
-
-</body>
-</html>
+</div>
+{% endblock %}

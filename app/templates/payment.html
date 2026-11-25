@@ -1,200 +1,54 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Page Simulation</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(45deg, #ff9a9e, #fad0c4);
-            margin: 0;
-            padding: 0;
-        }
+{% extends "base.html" %}
+{% from "_ui.html" import csrf with context %}
+{% set active = 'store' %}
+{% block title %}Payment{% endblock %}
+{% block container_class %}narrow{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Payment Details</h1><p>Pre-booking #{{ booking.id }}</p></div><span class="pill {{ booking.status }}">{{ booking.status|title }}</span></div>
 
-        .container {
-            width: 90%;
-            max-width: 600px;
-            margin: 50px auto;
-            padding: 30px;
-            background-color: white;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-            border-radius: 15px;
-            background: linear-gradient(135deg, #a18cd1 30%, #fbc2eb 100%);
-            color: #333;
-        }
-
-        h1 {
-            text-align: center;
-            font-size: 32px;
-            color: #fff;
-            margin-bottom: 20px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 5px;
-            color: #fff;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
-        }
-
-        input[type="text"], input[type="number"] {
-            width: 100%;
-            padding: 12px 15px;
-            font-size: 16px;
-            border: 2px solid #fff;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.6);
-            color: #444;
-            transition: all 0.3s ease;
-        }
-
-        input[type="text"]:focus, input[type="number"]:focus {
-            outline: none;
-            border-color: #ff6b81;
-            background-color: #fff;
-            box-shadow: 0 0 8px rgba(255, 107, 129, 0.7);
-        }
-
-        .btn-submit {
-            display: inline-block;
-            width: 100%;
-            padding: 14px;
-            font-size: 18px;
-            background: linear-gradient(45deg, #ff6b81, #ff7e5f);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background-color 0.3s ease, box-shadow 0.3s ease;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-
-        .btn-submit:hover {
-            background-color: #ff9a9e;
-            box-shadow: 0 8px 16px rgba(255, 107, 129, 0.4);
-        }
-
-        .summary {
-            background: rgba(255, 255, 255, 0.9);
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-
-        .summary h2 {
-            font-size: 24px;
-            color: #333;
-            margin-bottom: 10px;
-        }
-
-        footer {
-            text-align: center;
-            padding: 20px 0;
-            background-color: #333;
-            color: white;
-            margin-top: 50px;
-            border-radius: 0 0 10px 10px;
-        }
-
-        footer p {
-            margin: 0;
-        }
-
-        .result {
-            text-align: center;
-            padding: 10px;
-            margin-top: 20px;
-            display: none;
-        }
-
-        .result.success {
-            background-color: #28a745;
-            color: white;
-        }
-
-        .result.fail {
-            background-color: #dc3545;
-            color: white;
-        }
-    </style>
-</head>
-<body>
-
-    <div class="container">
-        <h1>Payment Details</h1>
-        <div class="summary">
-            <h2>Order Summary</h2>
-            <p><strong>Item:</strong> {{ booking.issue.title }} ({{ booking.issue.circle.postal_circle }} Postal Circle)</p>
-            <p><strong>Quantity:</strong> {{ booking.quantity }}</p>
-            <p><strong>Total Amount:</strong> ₹{{ total_amount }}</p>
-            <p>Pre-booking #{{ booking.id }} is reserved for you. See it any time in <a href="{{ url_for('member.my_collection') }}">My Collection</a>.</p>
+<div class="split" style="grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)">
+    {% if booking.status == 'pending' %}
+    <form class="card form" method="post" action="{{ url_for('main.payment', booking_id=booking.id) }}" autocomplete="off">
+        {{ csrf() }}
+        <div class="alert warning" style="margin-bottom:6px">These copies are held until <strong>{{ booking.expires_at.strftime('%H:%M') }} UTC</strong>. Unpaid holds are released automatically.</div>
+        <label for="name">Name on card</label>
+        <input type="text" id="name" name="name" required value="{{ current_user.display_name }}">
+        <label for="cardNumber">Card number</label>
+        <input type="text" id="cardNumber" name="cardNumber" inputmode="numeric" required placeholder="4111 1111 1111 1111">
+        <div class="form-grid">
+            <div><label for="expiryDate">Expiry</label><input type="text" id="expiryDate" name="expiryDate" required placeholder="MM/YY"></div>
+            <div><label for="cvv">CVV</label><input type="password" id="cvv" name="cvv" inputmode="numeric" required maxlength="4" placeholder="123"></div>
         </div>
-        <form id="paymentForm">
-            <div class="form-group">
-                <label for="name">Full Name</label>
-                <input type="text" id="name" name="name" required placeholder="Enter your full name" value="{{ current_user.full_name or current_user.username }}">
-            </div>
-
-            <div class="form-group">
-                <label for="cardNumber">Card Number</label>
-                <input type="text" id="cardNumber" name="cardNumber" required placeholder="Enter your card number">
-            </div>
-
-            <div class="form-group">
-                <label for="expiryDate">Expiry Date</label>
-                <input type="text" id="expiryDate" name="expiryDate" required placeholder="MM/YY">
-            </div>
-
-            <div class="form-group">
-                <label for="cvv">CVV</label>
-                <input type="number" id="cvv" name="cvv" required placeholder="Enter CVV">
-            </div>
-
-            <div class="form-group">
-                <label for="billingAddress">Billing Address</label>
-                <input type="text" id="billingAddress" name="billingAddress" required placeholder="Enter your billing address">
-            </div>
-
-            <button type="button" class="btn-submit" onclick="processPayment()">Pay Now</button>
-        </form>
-
-        <div id="result" class="result"></div>
+        <div class="actions"><button type="submit" class="btn">Pay ₹{{ booking.total }}</button></div>
+        <p class="hint">Simulated payment: no real money moves and card details are never stored. Test card 4111 1111 1111 1111 with any future expiry succeeds; 4000 0000 0000 0002 is declined.</p>
+    </form>
+    {% else %}
+    <div class="card">
+        {% if booking.status == 'paid' %}
+            <h2>Payment received</h2>
+            <p>Reference <strong>{{ booking.payment_ref or 'NPDA' }}</strong>. Your copies are confirmed.</p>
+            <a class="btn" href="{{ url_for('member.my_collection') }}">View My Collection</a>
+        {% else %}
+            <h2>This pre-booking was {{ booking.status }}</h2>
+            <p class="muted">The copies went back to the store.</p>
+            <a class="btn" href="{{ url_for('main.pre_book', issue_id=booking.issue_id) }}">Book again</a>
+        {% endif %}
     </div>
+    {% endif %}
 
-    <footer>
-        <p>&copy; 2024 Postal Philately Services. All rights reserved.</p>
-    </footer>
-
-    <script>
-        function processPayment() {
-            const cardNumber = document.getElementById('cardNumber').value;
-            const expiryDate = document.getElementById('expiryDate').value;
-            const cvv = document.getElementById('cvv').value;
-            const resultDiv = document.getElementById('result');
-
-            // Payment is simulated (no real gateway is connected): a specific test card succeeds,
-            // everything else fails. Nothing is sent to the server.
-            if (cardNumber === "4111 1111 1111 1111" && expiryDate === "12/24" && cvv === "123") {
-                resultDiv.textContent = "Payment Successful! Thank you for your purchase.";
-                resultDiv.className = "result success";
-            } else {
-                resultDiv.textContent = "Payment Failed! Please check your card details.";
-                resultDiv.className = "result fail";
-            }
-
-            // Show the result
-            resultDiv.style.display = "block";
-        }
-    </script>
-
-</body>
-</html>
+    <aside class="card">
+        <h3>Order Summary</h3>
+        <img src="{{ url_for('main.uploaded_file', filename=booking.issue.reference_image) }}" alt="" style="width:100%;max-height:180px;object-fit:contain;background:#eef2f1;border-radius:8px;padding:8px">
+        <dl class="details" style="grid-template-columns:90px 1fr;margin-top:12px">
+            <dt>Item</dt><dd>{{ booking.issue.title }} ({{ booking.issue.circle.postal_circle }} Postal Circle)</dd>
+            <dt>Quantity</dt><dd>{{ booking.quantity }}</dd>
+            <dt>Total</dt><dd><strong>₹{{ booking.total }}</strong></dd>
+        </dl>
+        {% if booking.status == 'pending' %}
+        <form method="post" action="{{ url_for('main.cancel_booking', booking_id=booking.id) }}" data-confirm="Cancel this pre-booking and release the copies?" style="margin-top:12px">
+            {{ csrf() }}<button class="link-btn danger" type="submit">Cancel pre-booking</button>
+        </form>
+        {% endif %}
+    </aside>
+</div>
+{% endblock %}

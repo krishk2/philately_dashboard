@@ -30,8 +30,8 @@ def test_profile_icon_shows_when_logged_in(client, alice, db):
     login(client, "alice")
     page = client.get("/home").get_data(as_text=True)
     assert "profile-menu" in page
-    assert 'class="profile-badge">1<' in page
-    assert "NPDA Account" in page
+    assert 'class="dot">1<' in page
+    assert "NPDA account" in page
 
 
 def test_crash_course_has_no_third_party_embed(client):

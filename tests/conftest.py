@@ -6,6 +6,7 @@ from app import create_app
 from app.cli import draw_stamp
 from app.extensions import db as _db
 from app.models import ROLE_CIRCLE, ROLE_COLLECTOR, User
+from app.services.storage import init_storage
 
 PASSWORD = "correct-horse"
 
@@ -14,6 +15,7 @@ PASSWORD = "correct-horse"
 def app(tmp_path):
     app = create_app("testing")
     app.config["UPLOAD_FOLDER"] = str(tmp_path / "uploads")
+    init_storage(app)  # re-point local storage at the per-test folder
     with app.app_context():
         _db.create_all()
         yield app

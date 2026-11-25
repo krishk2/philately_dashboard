@@ -1,200 +1,47 @@
-{% from "_site.html" import site_header, site_footer, site_flash with context %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Philately Crash Course - National Philatelic Community</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='site_layout.css') }}">
-    <style>
-        /* The original timeline, recoloured to the home page palette. */
-        .timeline {
-            position: relative;
-            background: rgba(255, 255, 255, 0.92);
-            border-radius: 8px;
-            padding: 3rem;
-            margin: 0 auto 1rem auto;
-            overflow: hidden;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        }
-        .timeline:after {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 50%;
-            margin-left: -2px;
-            border-right: 2px dashed var(--site-teal);
-            height: 100%;
-            display: block;
-        }
-        .timeline-row {
-            padding-left: 50%;
-            position: relative;
-            margin-bottom: 30px;
-        }
-        .timeline-row .timeline-time {
-            position: absolute;
-            right: 50%;
-            top: 15px;
-            text-align: right;
-            margin-right: 20px;
-            color: rgb(0, 51, 102);
-            font-size: 1.5rem;
-            font-weight: bold;
-        }
-        .timeline-row .timeline-time small {
-            display: block;
-            font-size: 0.8rem;
-            font-weight: normal;
-            color: #666;
-        }
-        .timeline-row .timeline-content {
-            position: relative;
-            padding: 20px 30px;
-            background: #f9f9f9;
-            border: 1px solid var(--site-teal);
-            border-radius: 8px;
-        }
-        .timeline-row.done .timeline-content {
-            background: #e9fbf7;
-        }
-        .timeline-row .timeline-content:before {
-            content: "";
-            position: absolute;
-            top: 20px;
-            right: -51px;
-            width: 20px;
-            height: 20px;
-            border-radius: 100px;
-            z-index: 10;
-            background: white;
-            border: 2px dashed var(--site-teal);
-        }
-        .timeline-row.done .timeline-content:before {
-            background: var(--site-teal);
-            border-style: solid;
-        }
-        .timeline-row .timeline-content h4 {
-            margin: 0 0 10px 0;
-            color: #333;
-            font-size: 1.2rem;
-        }
-        .timeline-row .timeline-content ul {
-            margin: 0 0 15px;
-            padding-left: 20px;
-        }
-        .timeline-row:nth-child(even) .timeline-content {
-            margin-left: 40px;
-        }
-        .timeline-row:nth-child(even) .timeline-content:before {
-            left: -54px;
-            right: initial;
-        }
-        .timeline-row:nth-child(odd) {
-            padding-left: 0;
-            padding-right: 50%;
-        }
-        .timeline-row:nth-child(odd) .timeline-time {
-            right: auto;
-            left: 50%;
-            text-align: left;
-            margin-right: 0;
-            margin-left: 20px;
-        }
-        .timeline-row:nth-child(odd) .timeline-content {
-            margin-right: 40px;
-        }
-        .course-actions {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 8px;
-        }
-        .course-actions a.site-pill {
-            text-decoration: none;
-        }
-        .progress {
-            height: 12px;
-            background: #e6e6e6;
-            border-radius: 6px;
-            overflow: hidden;
-            margin-top: 10px;
-        }
-        .progress span {
-            display: block;
-            height: 100%;
-            background: var(--site-teal);
-        }
-        @media (max-width: 900px) {
-            .timeline { padding: 15px; }
-            .timeline:after { border: 0; }
-            .timeline .timeline-row,
-            .timeline .timeline-row:nth-child(odd) { padding: 0; }
-            .timeline .timeline-row .timeline-time,
-            .timeline .timeline-row:nth-child(odd) .timeline-time {
-                position: relative; top: 0; left: 0; margin: 0 0 10px 0; text-align: left;
-            }
-            .timeline .timeline-row .timeline-content { margin: 0 !important; }
-            .timeline .timeline-row .timeline-content:before { display: none; }
-        }
-    </style>
-</head>
-<body class="site">
-{{ site_header('course') }}
+{% extends "base.html" %}
+{% from "_ui.html" import csrf with context %}
+{% set active = 'course' %}
+{% block title %}Philately Crash Course{% endblock %}
+{% block container_class %}narrow{% endblock %}
+{% block content %}
+{% set total = 5 %}
+<div class="page-head"><div><h1>Philately Crash Course 101</h1><p>Four weeks from first stamp to confident collector.</p></div></div>
 
-<main class="site-main">
-    {{ site_flash() }}
-    <div class="site-page-title">
-        <h2>Philately Crash Course 101</h2>
-        <p>Four weeks from first stamp to confident collector.</p>
-        {% if current_user.is_authenticated %}
-            {% set total = 5 %}
-            <div class="progress" aria-label="Course progress"><span style="width: {{ (done|length / total * 100)|round }}%"></span></div>
-            <p class="site-muted" style="margin-top:6px">{{ done|length }} of {{ total }} sections complete</p>
-        {% else %}
-            <p class="site-muted" style="margin-top:6px"><a href="{{ url_for('auth.login', next=request.path) }}">Log in</a> to track your progress.</p>
-        {% endif %}
-    </div>
+<section class="card" style="margin-bottom:20px">
+    {% if current_user.is_authenticated %}
+        <div class="row" style="justify-content:space-between"><strong>Your progress</strong><span class="muted small">{{ done|length }} of {{ total }} sections complete</span></div>
+        <div class="meter" aria-label="Course progress"><span style="width: {{ (done|length / total * 100)|round }}%"></span></div>
+    {% else %}
+        <p style="margin:0"><a href="{{ url_for('auth.login', next=request.path) }}">Log in</a> to track your progress.</p>
+    {% endif %}
+</section>
 
-    {% set weeks = [
-        ('week1', 'Week-1', 'Basics', 'Introduction to Philately',
-            ['Understand the basics', 'Learn terminology', 'Stamp anatomy and classification']),
-        ('week2', 'Week-2', 'Deepening', 'Building your Collection',
-            ['Start a collection', 'Store and handle stamps', 'Explore more']),
-        ('week3', 'Week-3', 'Development', 'Practical Application',
-            ['Organise your collection', 'Engage with the philately community']),
-        ('week4', 'Week-4', 'Final touch', 'Advanced Skills and Reflection',
-            ['Advanced collecting techniques', 'Review and plan future steps']),
-        ('bonus', 'Lifelong', 'Enjoyment', 'Bonus Habits',
-            ['Keep a journal', 'Stay curious']),
-    ] %}
-
-    <div class="timeline">
-        {% for key, when, sub, title, points in weeks %}
-        <div class="timeline-row {{ 'done' if key in done }}" id="{{ key }}">
-            <div class="timeline-time">{{ when }}<small>{{ sub }}</small></div>
-            <div class="timeline-content">
-                <h4>{{ title }} {% if key in done %}<span class="site-pill">✓ Done</span>{% endif %}</h4>
-                <ul>
-                    {% for p in points %}<li>{{ p }}</li>{% endfor %}
-                </ul>
-                <div class="course-actions">
-                    <a class="site-pill navy" href="https://youtu.be/T94PHkuydcw">YouTube</a>
-                    {% if key == 'week3' %}<a class="site-pill navy" href="{{ url_for('community.forums') }}">Join the Forums</a>{% endif %}
-                    {% if key == 'week2' %}<a class="site-pill navy" href="{{ url_for('main.buyer_home') }}">Browse the Stamp Mela</a>{% endif %}
-                    {% if current_user.is_authenticated %}
-                    <form method="post" action="{{ url_for('community.toggle_week', week=key) }}" style="display:inline">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button class="site-btn small {{ 'grey' if key in done else 'teal' }}" style="margin-top:0">{{ 'Mark as not done' if key in done else 'Mark as done' }}</button>
-                    </form>
-                    {% endif %}
-                </div>
-            </div>
+{% set weeks = [
+    ('week1', 'Week 1 · Basics', 'Introduction to Philately', ['Understand the basics', 'Learn terminology', 'Stamp anatomy and classification']),
+    ('week2', 'Week 2 · Deepening', 'Building your Collection', ['Start a collection', 'Store and handle stamps', 'Explore more']),
+    ('week3', 'Week 3 · Development', 'Practical Application', ['Organise your collection', 'Engage with the philately community']),
+    ('week4', 'Week 4 · Final touch', 'Advanced Skills and Reflection', ['Advanced collecting techniques', 'Review and plan future steps']),
+    ('bonus', 'Lifelong · Enjoyment', 'Bonus Habits', ['Keep a journal', 'Stay curious']),
+] %}
+<div class="timeline">
+    {% for key, when, title, points in weeks %}
+    <section class="step card {{ 'done' if key in done }}" id="{{ key }}">
+        <div class="row" style="justify-content:space-between">
+            <span class="when">{{ when }}</span>
+            {% if key in done %}<span class="pill">✓ Done</span>{% endif %}
         </div>
-        {% endfor %}
-    </div>
-</main>
-
-{{ site_footer() }}
-</body>
-</html>
+        <h3 style="margin:6px 0">{{ title }}</h3>
+        <ul style="margin:0 0 12px;padding-left:20px">{% for p in points %}<li>{{ p }}</li>{% endfor %}</ul>
+        <div class="row" style="gap:8px">
+            <a class="btn ghost sm" href="https://youtu.be/T94PHkuydcw" target="_blank" rel="noopener">▶ Watch on YouTube</a>
+            {% if key == 'week2' %}<a class="btn ghost sm" href="{{ url_for('main.buyer_home') }}">Browse the Stamp Mela</a>{% endif %}
+            {% if key == 'week3' %}<a class="btn ghost sm" href="{{ url_for('community.forums') }}">Join the Forums</a>{% endif %}
+            {% if current_user.is_authenticated %}
+            <form method="post" action="{{ url_for('community.toggle_week', week=key) }}">{{ csrf() }}
+                <button class="btn sm {{ 'ghost' if key in done else '' }}">{{ 'Mark as not done' if key in done else 'Mark as done' }}</button></form>
+            {% endif %}
+        </div>
+    </section>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -20,7 +20,7 @@ from flask import (
 )
 from flask_login import current_user, login_required, login_user, logout_user
 
-from .extensions import oauth
+from .extensions import limiter, oauth
 from .models import POSTAL_CIRCLES, ROLE_CIRCLE, ROLE_COLLECTOR
 from .services.accounts import authenticate, register_user
 from .services.errors import ValidationError
@@ -69,11 +69,13 @@ def _login(role: str):
 
 
 @bp.post("/login_philatelists")
+@limiter.limit("10 per minute;50 per hour")
 def login_philatelists():
     return _login(ROLE_COLLECTOR)
 
 
 @bp.post("/login_postalcircles")
+@limiter.limit("10 per minute;50 per hour")
 def login_postalcircles():
     return _login(ROLE_CIRCLE)
 
@@ -101,11 +103,13 @@ def _register(role: str):
 
 
 @bp.post("/register_philatelist")
+@limiter.limit("5 per minute;20 per hour")
 def register_philatelist():
     return _register(ROLE_COLLECTOR)
 
 
 @bp.post("/register_postalcircle")
+@limiter.limit("5 per minute;20 per hour")
 def register_postalcircle():
     return _register(ROLE_CIRCLE)
 
@@ -122,6 +126,7 @@ def logout():
 
 
 @bp.route("/login/<provider>")
+@limiter.limit("20 per minute")
 def sso_login(provider):
     client = oauth.create_client(provider) if provider in PROVIDERS else None
     if client is None:

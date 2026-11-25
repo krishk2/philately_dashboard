@@ -110,6 +110,7 @@ def user_from_claims(provider: str, claims: dict) -> User:
         # No password: this account signs in through the provider. A random, never-shown
         # password keeps the column non-null without making password login possible.
         user.set_password(secrets.token_urlsafe(32))
+        user.password_set = False
         db.session.add(user)
         db.session.flush()
 

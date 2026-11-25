@@ -9,27 +9,41 @@ from pathlib import Path
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
 from werkzeug.exceptions import HTTPException
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from .config import CONFIGS
-from .extensions import csrf, db, login_manager, migrate
+from .extensions import csrf, db, limiter, login_manager, migrate
 
 
-def create_app(config_name: str | None = None) -> Flask:
+def create_app(config_name: str | None = None, overrides: dict | None = None) -> Flask:
     load_dotenv()
     config_name = config_name or os.environ.get("FLASK_ENV_NAME", "development")
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(CONFIGS[config_name])
+    app.config.update(overrides or {})
 
     if not app.config.get("SECRET_KEY"):
         raise RuntimeError("SECRET_KEY must be set (see .env.example).")
 
+    if app.config.get("TRUST_PROXY"):
+        # Render/Heroku/nginx terminate TLS and forward the request. Without this the app
+        # thinks it is served over http://, which breaks SSO redirect URIs and secure cookies,
+        # and the rate limiter would see the proxy's IP instead of the client's.
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
+
     Path(app.instance_path).mkdir(parents=True, exist_ok=True)
-    Path(app.config["UPLOAD_FOLDER"]).mkdir(parents=True, exist_ok=True)
+    if app.config["STORAGE_BACKEND"] == "local":
+        Path(app.config["UPLOAD_FOLDER"]).mkdir(parents=True, exist_ok=True)
 
     db.init_app(app)
     migrate.init_app(app, db)
     csrf.init_app(app)
     login_manager.init_app(app)
+    limiter.init_app(app)
+
+    from .services.storage import init_storage
+
+    init_storage(app)
 
     from . import models
 
@@ -76,6 +90,17 @@ def create_app(config_name: str | None = None) -> Flask:
         )
         return {"unread_count": count or 0}
 
+    @app.after_request
+    def security_headers(response):
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        if app.config.get("SESSION_COOKIE_SECURE"):
+            response.headers.setdefault(
+                "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+            )
+        return response
+
     _register_error_pages(app)
 
     from .cli import register_cli
@@ -92,7 +117,12 @@ def _register_error_pages(app: Flask) -> None:
     @app.errorhandler(HTTPException)
     def handle_http(exc: HTTPException):
         # Requests that never reached the API blueprint (e.g. unknown /api/ URLs) still get JSON.
-        if request.path.startswith("/api/"):
+        if request.path.startswith("/api/") or request.path == "/ask":
             code = (exc.name or "error").lower().replace(" ", "_")
-            return jsonify({"error": {"code": code, "message": exc.description}}), exc.code
+            body = {"error": {"code": code, "message": exc.description}}
+            if request.path == "/ask" and exc.code == 429:  # the chatbot shows "response" text
+                body["response"] = "You're sending messages too quickly. Please wait a minute."
+            return jsonify(body), exc.code
+        if exc.code == 429:
+            exc.description = "Too many attempts. Please wait a minute and try again."
         return render_template("error.html", error=exc), exc.code

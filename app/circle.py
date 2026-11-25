@@ -12,7 +12,15 @@ from flask_login import current_user, login_required
 from sqlalchemy import func, select
 
 from .extensions import db
-from .models import UPDATE_KINDS, CircleUpdate, Event, Issue, Prebooking
+from .models import (
+    PREBOOK_PAID,
+    PREBOOK_PENDING,
+    UPDATE_KINDS,
+    CircleUpdate,
+    Event,
+    Issue,
+    Prebooking,
+)
 from .services import marketplace as svc
 from .services.accounts import change_email, change_password
 from .services.errors import DomainError, ValidationError
@@ -107,7 +115,10 @@ def manage_stamps():
         db.session.execute(
             select(Prebooking.issue_id, func.sum(Prebooking.quantity))
             .join(Issue)
-            .where(Issue.circle_id == current_user.id)
+            .where(
+                Issue.circle_id == current_user.id,
+                Prebooking.status.in_((PREBOOK_PAID, PREBOOK_PENDING)),
+            )
             .group_by(Prebooking.issue_id)
         ).all()
     )
@@ -188,7 +199,7 @@ def events():
     own = db.session.scalars(
         select(Event).where(Event.circle_id == current_user.id).order_by(Event.date.desc())
     ).all()
-    return render_template("events.html", events=own)
+    return render_template("events.html", events=own, today=date.today())
 
 
 @bp.get("/get-events")

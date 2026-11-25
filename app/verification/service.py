@@ -16,7 +16,6 @@ for review, and a listing is "verified" only if at least one check actually pass
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from pathlib import Path
 
 from flask import current_app
 from sqlalchemy import select
@@ -101,13 +100,19 @@ def check_official_issue(listing: Listing) -> CheckResult:
 
 def check_ai_vision(listing: Listing) -> CheckResult:
     config = current_app.config
-    image_path = Path(config["UPLOAD_FOLDER"]) / listing.image_filename
+    if not config.get("GEMINI_API_KEY"):
+        return CheckResult(
+            "ai_vision", SKIPPED, "AI check not run: GEMINI_API_KEY is not configured."
+        )
     try:
+        from ..services.uploads import read_image  # local import: services import this module
+
         seen = analyse_stamp_image(
-            image_path,
+            read_image(listing.image_filename),
             api_key=config.get("GEMINI_API_KEY"),
             model=config["GEMINI_MODEL"],
             timeout=config["GEMINI_TIMEOUT"],
+            filename=listing.image_filename,
         )
     except VisionUnavailable as exc:
         return CheckResult("ai_vision", SKIPPED, f"AI check not run: {exc}.")

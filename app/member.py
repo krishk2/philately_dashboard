@@ -14,8 +14,10 @@ from .models import (
     COURSE_WEEKS,
     LISTING_REMOVED,
     POSTAL_CIRCLES,
+    PREBOOK_PAID,
     Listing,
     Notification,
+    OAuthIdentity,
     Order,
     Prebooking,
     WishlistItem,
@@ -24,6 +26,7 @@ from .services import collectors as collectors_svc
 from .services import npda as npda_svc
 from .services.accounts import MEMBERSHIPS, change_email, change_password, update_profile
 from .services.errors import DomainError, ValidationError
+from .services.sso import PROVIDERS
 from .web import collector_required
 
 bp = Blueprint("member", __name__)
@@ -45,7 +48,9 @@ def _stats(user) -> dict:
         "bought": scalar(select(func.sum(Order.quantity)).where(Order.buyer_id == user.id)),
         "spent": scalar(select(func.sum(Order.total)).where(Order.buyer_id == user.id)),
         "prebooked": scalar(
-            select(func.sum(Prebooking.quantity)).where(Prebooking.user_id == user.id)
+            select(func.sum(Prebooking.quantity)).where(
+                Prebooking.user_id == user.id, Prebooking.status == PREBOOK_PAID
+            )
         ),
         "listed": scalar(
             select(func.count(Listing.id)).where(
@@ -203,7 +208,13 @@ def notifications_read():
 @bp.route("/settings2")
 @collector_required
 def settings():
-    return render_template("settings2.html")
+    sso_only = None
+    if not current_user.password_set:
+        identity = db.session.scalar(
+            select(OAuthIdentity).where(OAuthIdentity.user_id == current_user.id).limit(1)
+        )
+        sso_only = PROVIDERS[identity.provider]["label"] if identity else "single sign-on"
+    return render_template("settings2.html", sso_only=sso_only)
 
 
 @bp.post("/settings2/profile")

@@ -1,107 +1,45 @@
-{% from "_site.html" import site_header, site_footer, site_flash with context %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Indian Stamp Museum - National Philatelic Community</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='site_layout.css') }}">
-    <style>
-        .museum-placeholder {
-            width: 100%;
-            aspect-ratio: 5 / 6;
-            border-radius: 8px;
-            background: #f3efe6;
-            border: 6px dashed #fff;
-            outline: 1px solid #ddd;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 64px;
-            box-sizing: border-box;
-        }
+{% extends "base.html" %}
+{% from "_ui.html" import stamp_art with context %}
+{% set active = 'museum' %}
+{% block title %}Stamp Museum{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Indian Stamp Museum</h1><p>Explore the rich history of India through its stamps.</p></div></div>
 
-        .scroll-top {
-            position: fixed;
-            bottom: 90px;
-            right: 26px;
-            display: none;
-            background-color: rgb(0, 51, 102);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            padding: 10px 15px;
-            font-size: 18px;
-            cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-    </style>
-</head>
-<body class="site">
-{{ site_header('museum') }}
-
-<main class="site-main">
-    {{ site_flash() }}
-    <div class="site-page-title">
-        <h2>Indian Stamp Museum</h2>
-        <p>Explore the rich history of India through its stamps</p>
-    </div>
-
-    <h2 style="color:white;text-shadow:0 1px 3px rgba(0,0,0,.6)">Featured Stamps</h2>
-    <div class="site-grid">
-        {% set featured = [
-            ('famous.jpg', 'Mahatma Gandhi', 'This stamp honours the father of the nation, Mahatma Gandhi, with an iconic image of him spinning the charkha.'),
-            ('cancellation.jpg', 'Indian Independence', "This stamp commemorates India's independence from British rule in 1947."),
-            ('monuments.jpg', 'Taj Mahal', "A beautiful stamp showcasing the world-famous monument, the Taj Mahal, a symbol of India's rich heritage."),
-            (None, 'Indian Railways', 'This stamp celebrates the vast and historical Indian railway system, a lifeline of the nation.'),
+<section class="section" style="margin-top:0">
+    <h2>Featured Stamps</h2>
+    <div class="grid">
+        {% for image, title, text in [
+            ('famous.jpg', 'Mahatma Gandhi', 'Honouring the father of the nation, with an iconic image of him spinning the charkha.'),
+            ('cancellation.jpg', 'Indian Independence', "Commemorating India's independence from British rule in 1947."),
+            ('monuments.jpg', 'Taj Mahal', "The world-famous monument, a symbol of India's rich heritage."),
+            (None, 'Indian Railways', 'Celebrating the vast and historic Indian railway system, a lifeline of the nation.'),
         ] %}
-        {% for image, title, text in featured %}
-        <div class="site-item">
-            {% if image %}
-                <img src="{{ url_for('static', filename=image) }}" alt="{{ title }}" loading="lazy">
-            {% else %}
-                <div class="museum-placeholder" role="img" aria-label="{{ title }}">🚂</div>
-            {% endif %}
-            <h3>{{ title }}</h3>
-            <p>{{ text }}</p>
-        </div>
+        <article class="item">
+            <div class="media">{% if image %}<img src="{{ url_for('static', filename=image) }}" alt="{{ title }}" loading="lazy">{% else %}{{ stamp_art(title, '🚂', 'red') }}{% endif %}</div>
+            <div class="body"><span class="kicker">Featured</span><h3 class="title">{{ title }}</h3><p class="desc">{{ text }}</p></div>
+        </article>
         {% endfor %}
     </div>
+</section>
 
-    <h2 style="color:white;text-shadow:0 1px 3px rgba(0,0,0,.6);margin-top:35px">Archive of Official Issues</h2>
+<section class="section">
+    <h2>Archive of Official Issues</h2>
     {% if archive %}
-    <div class="site-grid">
+    <div class="grid">
         {% for issue in archive %}
-        <div class="site-item">
-            <img src="{{ url_for('main.uploaded_file', filename=issue.reference_image) }}" alt="{{ issue.title }}" loading="lazy">
-            <h3>{{ issue.title }}</h3>
-            <p class="site-muted">{{ issue.issue_date.strftime('%d %b %Y') }} · ₹{{ issue.denomination }}</p>
-            <p class="site-muted">{{ issue.circle.postal_circle }} Postal Circle</p>
-            {% if issue.description %}<p>{{ issue.description }}</p>{% endif %}
-        </div>
+        <article class="item">
+            <div class="media"><img src="{{ url_for('main.uploaded_file', filename=issue.reference_image) }}" alt="{{ issue.title }}" loading="lazy"></div>
+            <div class="body">
+                <span class="kicker">{{ issue.circle.postal_circle }} Postal Circle</span>
+                <h3 class="title">{{ issue.title }}</h3>
+                <p class="desc">{{ issue.description }}</p>
+                <div class="foot"><span class="price">₹{{ issue.denomination }}</span><span class="muted small">{{ issue.issue_date.strftime('%d %b %Y') }}</span></div>
+            </div>
+        </article>
         {% endfor %}
     </div>
     {% else %}
-    <div class="site-card"><p>Official issues published by the postal circles will be archived here.</p></div>
+    <div class="card"><p class="muted">Official issues published by the postal circles will be archived here.</p></div>
     {% endif %}
-</main>
-
-<!-- Scroll to top button -->
-<button class="scroll-top" onclick="scrollToTop()" aria-label="Scroll to top">↑</button>
-
-{{ site_footer() }}
-
-<script>
-    // Scroll to top functionality
-    window.addEventListener('scroll', function() {
-        var scrollTopBtn = document.querySelector('.scroll-top');
-        scrollTopBtn.style.display =
-            (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) ? 'block' : 'none';
-    });
-
-    function scrollToTop() {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-</script>
-</body>
-</html>
+</section>
+{% endblock %}

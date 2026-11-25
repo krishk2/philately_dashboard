@@ -41,13 +41,24 @@ class VisionResult:
 
 
 def analyse_stamp_image(
-    image_path: str | Path, *, api_key: str | None, model: str, timeout: float = 20
+    image: bytes | str | Path,
+    *,
+    api_key: str | None,
+    model: str,
+    timeout: float = 20,
+    filename: str | None = None,
 ) -> VisionResult:
+    """`image` is the file's bytes (from storage) or a local path."""
     if not api_key:
         raise VisionUnavailable("GEMINI_API_KEY is not configured")
 
-    path = Path(image_path)
-    mime = mimetypes.guess_type(path.name)[0] or "image/jpeg"
+    if isinstance(image, bytes):
+        data = image
+        name = filename or "image.jpg"
+    else:
+        data = Path(image).read_bytes()
+        name = Path(image).name
+    mime = mimetypes.guess_type(name)[0] or "image/jpeg"
     payload = {
         "contents": [
             {
@@ -56,7 +67,7 @@ def analyse_stamp_image(
                     {
                         "inline_data": {
                             "mime_type": mime,
-                            "data": base64.b64encode(path.read_bytes()).decode("ascii"),
+                            "data": base64.b64encode(data).decode("ascii"),
                         }
                     },
                 ]

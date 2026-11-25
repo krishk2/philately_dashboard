@@ -1,74 +1,53 @@
-{% from "_flash.html" import plain, csrf %}
-{% from "_sso.html" import sso_buttons with context %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Philatelic Community Login</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-</head>
-<body>
-  <div class="container">
-    <header class="header">
-      <div class="header-content">
-        <img src="{{ url_for('static', filename='India-Post_Preview.png') }}" alt="India Post Logo" class="logo">
-        <h1>National Philatelic Community</h1>
-      </div>
-    </header>
+{% extends "base.html" %}
+{% from "_ui.html" import csrf, sso_buttons with context %}
+{% block title %}Log in{% endblock %}
+{% block chatbot %}{% endblock %}
 
-    {{ plain() }}
+{% block full %}
+<div class="auth-wrap">
+<div class="container slim">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}<div class="alert {{ category if category in ('success', 'error', 'warning') else 'info' }}" role="alert">{{ message }}</div>{% endfor %}
+    {% endwith %}
+    <div class="card">
+        <h1 style="font-size:1.6rem">Welcome back</h1>
+        <p class="muted">Log in to the National Philatelic Community.</p>
 
-    <div class="selection-panel">
-      <h2>Select Your User Type</h2>
-      <div class="button-group">
-        <button class="user-button" id="philatelist-btn">
-          <span class="icon">🖼️</span> Philatelist
-        </button>
-        <button class="user-button" id="postalcircle-btn">
-          <span class="icon">📬</span> Postal Circle
-        </button>
-      </div>
+        <div class="role-switch" data-role-switch role="tablist">
+            <button type="button" role="tab" id="philatelist-btn" data-target="philatelists-content" aria-selected="{{ 'false' if open_tab == 'circle' else 'true' }}">🖼️ Philatelist</button>
+            <button type="button" role="tab" id="postalcircle-btn" data-target="postalcircles-content" aria-selected="{{ 'true' if open_tab == 'circle' else 'false' }}">📬 Postal Circle</button>
+        </div>
+
+        <div id="philatelists-content" role="tabpanel">
+            <form class="form" action="{{ url_for('auth.login_philatelists', next=next) }}" method="POST">
+                {{ csrf() }}
+                <label for="p-user">Username</label>
+                <input type="text" id="p-user" name="username" required autocomplete="username">
+                <label for="p-pass">Password</label>
+                <input type="password" id="p-pass" name="password" required autocomplete="current-password">
+                <div class="actions"><button class="btn block" type="submit">Log in</button></div>
+            </form>
+            {{ sso_buttons(next) }}
+        </div>
+
+        <div id="postalcircles-content" role="tabpanel" hidden>
+            <form class="form" action="{{ url_for('auth.login_postalcircles', next=next) }}" method="POST">
+                {{ csrf() }}
+                <label for="c-circle">Postal circle</label>
+                <select id="c-circle" name="postal_circle" required>
+                    <option value="" disabled selected>Select postal circle</option>
+                    {% for c in circles %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+                </select>
+                <label for="c-user">Username</label>
+                <input type="text" id="c-user" name="username" required autocomplete="username">
+                <label for="c-pass">Password</label>
+                <input type="password" id="c-pass" name="password" required autocomplete="current-password">
+                <div class="actions"><button class="btn navy block" type="submit">Log in as postal circle</button></div>
+            </form>
+        </div>
+
+        <p class="muted small" style="margin-top:18px;text-align:center">Don't have an account? <a href="{{ url_for('auth.register') }}">Register</a></p>
     </div>
-
-    <div class="tabs">
-      <!-- Philatelists Tab -->
-      <div class="tab-content" id="philatelists-content" style="display:{{ 'block' if open_tab == 'collector' else 'none' }};">
-        <h3>Philatelists Login</h3>
-        <form action="{{ url_for('auth.login_philatelists', next=next) }}" method="POST">
-          {{ csrf() }}
-          <input type="text" class="input-field" name="username" placeholder="Username" required autocomplete="username">
-          <input type="password" class="input-field" name="password" placeholder="Password" required autocomplete="current-password">
-          <button class="submit-button" type="submit">Login</button>
-        </form>
-        {{ sso_buttons(next) }}
-        <p>Don't have an account? <a href="{{ url_for('auth.register') }}">Register</a></p>
-      </div>
-
-      <!-- Postal Circles Tab -->
-      <div class="tab-content" id="postalcircles-content" style="display:{{ 'block' if open_tab == 'circle' else 'none' }};">
-        <h3>Postal Circles Login</h3>
-        <form action="{{ url_for('auth.login_postalcircles', next=next) }}" method="POST">
-          {{ csrf() }}
-          <select class="input-field" name="postal_circle" required>
-            <option value="" disabled selected>Select Postal Circle</option>
-            {% for c in circles %}<option value="{{ c }}">{{ c }}</option>
-            {% endfor %}
-          </select>
-          <input type="text" class="input-field" name="username" placeholder="Username" required autocomplete="username">
-          <input type="password" class="input-field" name="password" placeholder="Password" required autocomplete="current-password">
-          <button class="submit-button" type="submit">Login</button>
-        </form>
-        <p>Don't have an account? <a href="{{ url_for('auth.register') }}">Register</a></p>
-      </div>
-    </div>
-  </div>
-
-  <footer class="footer">
-    <p>Connecting Philatelists and Postal Services across India</p>
-  </footer>
-
-  <script src="{{ url_for('static', filename='script.js') }}"></script>
-</body>
-</html>
+</div>
+</div>
+{% endblock %}

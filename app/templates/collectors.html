@@ -1,53 +1,27 @@
-{% from "_site.html" import site_header, site_footer, site_flash with context %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Collectors - National Philatelic Community</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='site_layout.css') }}">
-    <style>
-        .collector-card { text-align: center; }
-        .collector-card .profile-avatar { width: 80px; height: 80px; margin: 0 auto; font-size: 28px; border-color: var(--site-teal); }
-        .collector-card h3 a { color: rgb(0, 51, 102); text-decoration: none; }
-        .collector-card .badge-row { font-size: 22px; min-height: 30px; letter-spacing: 2px; }
-    </style>
-</head>
-<body class="site">
-{{ site_header('forums') }}
-
-<main class="site-main">
-    {{ site_flash() }}
-    <div class="site-page-title">
-        <h2>Meet the Collectors</h2>
-        <p>Browse collections, see who's earned which badges, and follow collectors who share your interests.</p>
-    </div>
-
-    <form class="site-card site-form" method="get" style="display:flex;gap:8px;align-items:center">
-        <input type="search" name="q" value="{{ query }}" placeholder="Search collectors by name...">
-        <button class="site-btn blue" style="margin:0">Search</button>
+{% extends "base.html" %}
+{% from "_ui.html" import avatar with context %}
+{% set active = 'collectors' %}
+{% block title %}Collectors{% endblock %}
+{% block content %}
+<div class="page-head">
+    <div><h1>Meet the Collectors</h1><p>Browse collections, see who's earned which badges, and follow collectors who share your interests.</p></div>
+    <form class="form row" method="get" style="gap:8px">
+        <input type="search" name="q" value="{{ query }}" placeholder="Search by name…" aria-label="Search collectors" style="width:240px">
+        <button class="btn navy" type="submit">Search</button>
     </form>
-
-    <div class="site-grid">
-        {% for user, earned, size in rows %}
-        <div class="site-item collector-card">
-            <span class="profile-avatar">
-                {%- if user.avatar_filename -%}<img src="{{ url_for('main.uploaded_file', filename=user.avatar_filename) }}" alt="">
-                {%- else -%}{{ user.initials }}{%- endif -%}
-            </span>
-            <h3><a href="{{ url_for('community.collector', username=user.username) }}">{{ user.display_name }}</a></h3>
-            <p class="site-muted">@{{ user.username }}{% if user.show_collection %} · {{ size }} stamp{{ 's' if size != 1 }}{% endif %}</p>
-            <div class="badge-row" title="{{ earned|map(attribute='name')|join(', ') }}">{% for b in earned %}{{ b.icon }}{% endfor %}</div>
-            <p class="site-muted">{{ earned|length }} badge{{ 's' if earned|length != 1 }}{% if user.id in following %} · <strong>Following</strong>{% endif %}</p>
-            <div class="spacer"></div>
-            <a class="site-btn teal" href="{{ url_for('community.collector', username=user.username) }}">View Collection</a>
-        </div>
-        {% else %}
-        <div class="site-card"><p>No collectors found.</p></div>
-        {% endfor %}
-    </div>
-</main>
-
-{{ site_footer() }}
-</body>
-</html>
+</div>
+<div class="grid">
+    {% for user, earned, size in rows %}
+    <article class="card" style="text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px">
+        {{ avatar(user, 'lg') }}
+        <h3 style="margin:8px 0 0"><a class="author-link" href="{{ url_for('community.collector', username=user.username) }}">{{ user.display_name }}</a></h3>
+        <span class="muted small">@{{ user.username }}{% if user.show_collection %} · {{ size }} stamp{{ 's' if size != 1 }}{% endif %}</span>
+        <div style="font-size:1.4rem;min-height:1.8rem" title="{{ earned|map(attribute='name')|join(', ') }}">{% for b in earned %}{{ b.icon }}{% endfor %}</div>
+        <span class="muted small">{{ earned|length }} badge{{ 's' if earned|length != 1 }}{% if user.id in following %} · <strong>Following</strong>{% endif %}</span>
+        <a class="btn ghost sm" style="margin-top:auto" href="{{ url_for('community.collector', username=user.username) }}">View collection</a>
+    </article>
+    {% else %}
+    <div class="card"><p>No collectors found.</p></div>
+    {% endfor %}
+</div>
+{% endblock %}

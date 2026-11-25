@@ -1,59 +1,47 @@
-{% from "_site.html" import site_header, site_footer, site_flash with context %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stamp Store - National Philatelic Community</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='site_layout.css') }}">
-</head>
-<body class="site">
-{{ site_header('store') }}
+{% extends "base.html" %}
+{% from "_ui.html" import stamp_art with context %}
+{% set active = 'store' %}
+{% block title %}Stamp Store{% endblock %}
+{% block content %}
+<div class="page-head">
+    <div><h1>Welcome to the Stamp Store</h1><p>Pre-book new official issues straight from the postal circles.</p></div>
+</div>
 
-<main class="site-main">
-    {{ site_flash() }}
-    <div class="site-page-title">
-        <h2>Welcome to the Stamp Store</h2>
-        <p>Pre-book new official issues straight from the postal circles.</p>
-    </div>
+<div class="cta-band" style="margin-bottom:24px">
+    {% if npda and npda.is_active %}
+        <div><h3>NPDA {{ npda.account_number }}</h3>
+            <p>{{ npda.copies_per_issue }} cop{{ 'y' if npda.copies_per_issue == 1 else 'ies' }} of every new issue from {{ 'all circles' if npda.scope == 'all' else npda.home_circle ~ ' Postal Circle' }} are reserved for you automatically. Balance ₹{{ npda.balance }}.</p></div>
+        <a class="btn" href="{{ url_for('member.npda') }}">Manage</a>
+    {% else %}
+        <div><h3>Never miss a release</h3><p>With an NPDA account, new issues are reserved for you automatically the moment they're published.</p></div>
+        <a class="btn" href="{{ url_for('member.npda') }}">Open NPDA account</a>
+    {% endif %}
+</div>
 
-    <div class="site-card" style="background: rgba(0, 123, 255, 0.85); color: white; border: none; text-align: center">
-        {% if npda and npda.is_active %}
-            NPDA {{ npda.account_number }}: {{ npda.copies_per_issue }} cop{{ 'y' if npda.copies_per_issue == 1 else 'ies' }} of every new issue from
-            {{ 'all circles' if npda.scope == 'all' else npda.home_circle ~ ' Postal Circle' }} are reserved for you automatically.
-            Balance ₹{{ npda.balance }}.
-            <a class="site-btn" style="background:#ffc107;color:#333;margin:0 0 0 8px" href="{{ url_for('member.npda') }}">Manage</a>
-        {% else %}
-            Never miss a release: with an NPDA account, new issues are reserved for you automatically.
-            <a class="site-btn" style="background:#ffc107;color:#333;margin:0 0 0 8px" href="{{ url_for('member.npda') }}">Open NPDA Account</a>
-        {% endif %}
-    </div>
-
-    <div class="site-grid">
-        {% for issue in issues %}
-        <div class="site-item">
-            <img src="{{ url_for('main.uploaded_file', filename=issue.reference_image) }}" alt="{{ issue.title }}" loading="lazy">
-            <h3>{{ issue.title }}</h3>
-            <p><strong>₹{{ issue.denomination }} each</strong></p>
-            <p class="site-muted">{{ issue.circle.postal_circle }} Postal Circle · issued {{ issue.issue_date.strftime('%d %b %Y') }}</p>
-            {% if issue.description %}<p class="site-muted">{{ issue.description }}</p>{% endif %}
-            <div class="spacer"></div>
-            {% if issue.prebook_available > 0 %}
-                <p>{{ issue.prebook_available }} copies left</p>
-                <a href="{{ url_for('main.pre_book', issue_id=issue.id) }}" class="site-btn">Pre-Book Now</a>
-            {% else %}
-                <p><span class="site-pill red">Sold out</span></p>
-            {% endif %}
+<div class="grid">
+    {% for issue in issues %}
+    <article class="item">
+        <div class="media"><img src="{{ url_for('main.uploaded_file', filename=issue.reference_image) }}" alt="{{ issue.title }}" loading="lazy"></div>
+        <div class="body">
+            <span class="kicker">{{ issue.circle.postal_circle }} Postal Circle</span>
+            <h3 class="title">{{ issue.title }}</h3>
+            <p class="desc">{{ issue.description or 'Official issue.' }}</p>
+            <span class="muted small">Issued {{ issue.issue_date.strftime('%d %b %Y') }}{% if issue.prebook_available %} · {{ issue.prebook_available }} copies left{% endif %}</span>
+            <div class="foot">
+                <span class="price">₹{{ issue.denomination }} <span class="muted small" style="font-weight:400">each</span></span>
+                {% if issue.prebook_available > 0 %}
+                    <a href="{{ url_for('main.pre_book', issue_id=issue.id) }}" class="btn sm">Pre-Book Now</a>
+                {% else %}
+                    <span class="pill red">Sold out</span>
+                {% endif %}
+            </div>
         </div>
-        {% else %}
-        <div class="site-card">
-            <h3>No stamps available yet</h3>
-            <p>Postal circles haven't published any new issues. Check back soon!</p>
-        </div>
-        {% endfor %}
+    </article>
+    {% else %}
+    <div class="card" style="grid-column:1/-1;text-align:center">
+        <h3>No stamps available yet</h3>
+        <p class="muted">Postal circles haven't published any new issues. Check back soon!</p>
     </div>
-</main>
-
-{{ site_footer() }}
-</body>
-</html>
+    {% endfor %}
+</div>
+{% endblock %}

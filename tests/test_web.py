@@ -51,7 +51,6 @@ def test_public_pages_render(client):
         "/register",
         "/home",
         "/stamp_store",
-        "/stamp_mela",
         "/buyer_home",
         "/philately_crash_course",
         "/stamp_museum",
@@ -255,11 +254,11 @@ def test_buyer_home_sort_and_verified_filter(client, alice, bob, db):
     sell(client, seed=1, stamp_name="Copycat", coated_price="50")  # flagged duplicate
 
     page = client.get("/buyer_home?sort=price_desc").get_data(as_text=True)
-    collection = page.split("Stamp Collection</h1>")[1]
+    collection = page.split("Stamp Collection</h2>")[1]
     assert collection.index("Pricey") < collection.index("Copycat") < collection.index("Cheap")
 
     verified = client.get("/buyer_home?verified=1").get_data(as_text=True)
-    assert "Copycat" not in verified.split("Stamp Collection</h1>")[1]
+    assert "Copycat" not in verified.split("Stamp Collection</h2>")[1]
 
 
 def test_search(client, alice, db):

@@ -19,6 +19,13 @@ def _database_url() -> str:
     return url
 
 
+def _flag(name: str, default: bool) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in ("1", "true", "yes", "on")
+
+
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY")
     SQLALCHEMY_DATABASE_URI = _database_url()
@@ -51,6 +58,36 @@ class Config:
     # "kind|label|url" entries separated by commas, kind being release, news or event.
     FEED_TIMEOUT = float(os.environ.get("FEED_TIMEOUT", "20"))
     FEED_EXTRA_RSS = os.environ.get("FEED_EXTRA_RSS", "")
+    # India Post's guidelines require Department of Posts permission for any use of stamp
+    # images, so their images are only shown once that permission is in hand.
+    FEED_SHOW_SOURCE_IMAGES = _flag("FEED_SHOW_SOURCE_IMAGES", False)
+    FEED_DETAIL_FETCH_LIMIT = int(os.environ.get("FEED_DETAIL_FETCH_LIMIT", "10"))
+
+    # Pre-bookings hold stock for this long while the buyer pays; unpaid ones then expire.
+    PREBOOK_HOLD_MINUTES = int(os.environ.get("PREBOOK_HOLD_MINUTES", "30"))
+
+    # Rate limiting (Flask-Limiter). Use a shared store such as redis:// with several workers.
+    RATELIMIT_ENABLED = _flag("RATELIMIT_ENABLED", True)
+    RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
+    RATELIMIT_HEADERS_ENABLED = True
+
+    # Where uploaded images live: "local" (UPLOAD_FOLDER) or "s3" (any S3-compatible store:
+    # AWS S3, Cloudflare R2, Backblaze B2, MinIO).
+    STORAGE_BACKEND = os.environ.get("STORAGE_BACKEND", "local")
+    S3_BUCKET = os.environ.get("S3_BUCKET")
+    S3_PREFIX = os.environ.get("S3_PREFIX", "uploads/")
+    S3_REGION = os.environ.get("S3_REGION")
+    S3_ENDPOINT_URL = os.environ.get("S3_ENDPOINT_URL")  # needed for R2 / B2 / MinIO
+    S3_ACCESS_KEY_ID = os.environ.get("S3_ACCESS_KEY_ID")
+    S3_SECRET_ACCESS_KEY = os.environ.get("S3_SECRET_ACCESS_KEY")
+    # Public base URL (e.g. a CDN or public bucket). If unset, short-lived signed URLs are used.
+    S3_PUBLIC_URL = os.environ.get("S3_PUBLIC_URL")
+
+    # Behind a reverse proxy (Render, Heroku, nginx), trust one hop of X-Forwarded-* headers so
+    # the app sees the real scheme, host and client IP.
+    TRUST_PROXY = _flag("TRUST_PROXY", False)
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
 
 
 class DevelopmentConfig(Config):
@@ -73,10 +110,18 @@ class TestingConfig(Config):
     YAHOO_CLIENT_ID = "test-yahoo-id"
     YAHOO_CLIENT_SECRET = "test-yahoo-secret"
     FEED_EXTRA_RSS = ""
+    RATELIMIT_ENABLED = False
+    STORAGE_BACKEND = "local"
+    FEED_SHOW_SOURCE_IMAGES = False
 
 
 class ProductionConfig(Config):
-    pass
+    # HTTPS-only cookies and https:// external URLs (needed for SSO redirect URIs).
+    SESSION_COOKIE_SECURE = True
+    REMEMBER_COOKIE_SECURE = True
+    REMEMBER_COOKIE_HTTPONLY = True
+    PREFERRED_URL_SCHEME = "https"
+    TRUST_PROXY = _flag("TRUST_PROXY", True)
 
 
 CONFIGS = {

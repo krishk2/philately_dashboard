@@ -1,0 +1,145 @@
+{#- Every page extends this: one header, nav bar, footer, favicon and stylesheet site-wide.
+    Blocks: title, nav (active nav key), head, content, scripts, chatbot (true/false). -#}
+{% from "_ui.html" import avatar with context %}
+{% set active = active|default('') %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0b3558">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}National Philatelic Community{% endblock %} · National Philatelic Community</title>
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}" sizes="any">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+<header class="site-header">
+    <div class="inner">
+        <a class="brand" href="{{ url_for('main.home') }}">
+            <img src="{{ url_for('static', filename='img/favicon.svg') }}" alt="">
+            <span><span class="brand-name">National Philatelic Community</span>
+            <span class="brand-tag">Uniting Philatelists Across the Nation</span></span>
+        </a>
+        <form class="header-search" action="{{ url_for('main.search') }}" method="get" role="search">
+            <input type="search" name="search" placeholder="Search stamps…" aria-label="Search stamps">
+            <button type="submit" aria-label="Search">🔍</button>
+        </form>
+        {% if current_user.is_authenticated %}
+            {% set is_circle = current_user.is_circle %}
+            <details class="profile-menu">
+                <summary title="Your account">
+                    {{ avatar(current_user, dot=unread_count) }}
+                    <span class="label">{{ current_user.display_name }} ▾</span>
+                </summary>
+                <div class="menu">
+                    <div class="who">
+                        <strong>{{ current_user.display_name }}</strong>
+                        <span class="muted small">{{ (current_user.postal_circle ~ ' Postal Circle') if is_circle else ('Philatelist · ' ~ current_user.membership) }}</span>
+                    </div>
+                    {% if is_circle %}
+                        <a href="{{ url_for('circle.dashboard') }}">Circle dashboard</a>
+                        <a href="{{ url_for('circle.manage_stamps') }}">Manage stamps</a>
+                        <a href="{{ url_for('circle.events') }}">Events</a>
+                    {% else %}
+                        <a href="{{ url_for('member.dashboard') }}">My dashboard</a>
+                        <a href="{{ url_for('community.collector', username=current_user.username) }}">My public profile</a>
+                        <a href="{{ url_for('member.npda') }}">NPDA account
+                            {%- if current_user.npda and current_user.npda.is_active %} <span class="muted small">₹{{ current_user.npda.balance }}</span>{% endif %}</a>
+                        <a href="{{ url_for('member.my_collection') }}">My collection</a>
+                        <a href="{{ url_for('main.wishlist') }}">Wishlist</a>
+                    {% endif %}
+                    <a href="{{ url_for('member.notifications') }}">Notifications {% if unread_count %}<span class="count">{{ unread_count }}</span>{% endif %}</a>
+                    <a href="{{ url_for('circle.settings') if is_circle else url_for('member.settings') }}">Settings</a>
+                    <hr>
+                    <form action="{{ url_for('auth.logout') }}" method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit">Log out</button>
+                    </form>
+                </div>
+            </details>
+        {% else %}
+            <div class="auth-links">
+                <a href="{{ url_for('auth.login', next=request.path if request.endpoint not in ('auth.login', 'auth.register') else None) }}">Log in</a>
+                <a class="btn sm" href="{{ url_for('auth.register') }}">Join free</a>
+            </div>
+        {% endif %}
+    </div>
+</header>
+
+<nav class="site-nav" aria-label="Main">
+    <ul>
+        {% for key, endpoint, label in [
+            ('home', 'main.home', 'Home'),
+            ('store', 'main.stamp_store', 'Stamp Store'),
+            ('mela', 'main.buyer_home', 'Stamp Mela'),
+            ('forums', 'community.forums', 'Forums'),
+            ('collectors', 'community.collectors', 'Collectors'),
+            ('course', 'community.crash_course', 'Crash Course'),
+            ('museum', 'main.stamp_museum', 'Stamp Museum'),
+        ] %}
+        <li><a href="{{ url_for(endpoint) }}" class="{{ 'active' if key == active }}">{{ label }}</a></li>
+        {% endfor %}
+    </ul>
+</nav>
+
+<main>
+    {% block full %}
+    <div class="container {% block container_class %}{% endblock %}">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="alert {{ category if category in ('success', 'error', 'warning') else 'info' }}" role="alert">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </div>
+    {% endblock %}
+</main>
+
+<footer class="site-footer">
+    <div class="inner">
+        <div>
+            <h4>National Philatelic Community</h4>
+            <p class="small">A marketplace and community for stamp collectors and India's postal circles. Listings are checked for copied photos and matched against official issues.</p>
+        </div>
+        <div>
+            <h4>Collect</h4>
+            <a href="{{ url_for('main.stamp_store') }}">Stamp Store</a>
+            <a href="{{ url_for('main.buyer_home') }}">Stamp Mela</a>
+            <a href="{{ url_for('member.npda') }}">NPDA account</a>
+        </div>
+        <div>
+            <h4>Community</h4>
+            <a href="{{ url_for('community.forums') }}">Forums</a>
+            <a href="{{ url_for('community.collectors') }}">Collectors</a>
+            <a href="{{ url_for('community.crash_course') }}">Crash Course</a>
+        </div>
+        <div>
+            <h4>Official</h4>
+            <a href="https://www.indiapost.gov.in/" rel="noopener">India Post</a>
+            <a href="https://postagestamps.gov.in/" rel="noopener">Postage Stamps of India</a>
+            <a href="{{ url_for('main.stamp_museum') }}">Stamp Museum</a>
+        </div>
+    </div>
+    <div class="legal">Not affiliated with India Post. Imported headlines link to their original sources.</div>
+</footer>
+
+{% block chatbot %}
+<button class="chat-fab" id="chatbotIcon" aria-label="Open help chat"><img src="{{ url_for('static', filename='bot.jpg') }}" alt=""></button>
+<section class="chat-panel" id="chatbotInterface" aria-label="Help chat">
+    <header><strong>Help chat</strong><button id="closeChatbot" aria-label="Close chat">✕</button></header>
+    <div id="chat-log"><p>Hi there! Need help with anything?</p></div>
+    <form id="chat-form"><input type="text" id="user-input" placeholder="Ask me something…" autocomplete="off"><button class="btn sm" id="send-button" type="submit">Send</button></form>
+</section>
+{% endblock %}
+
+<script src="{{ url_for('static', filename='js/site.js') }}" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

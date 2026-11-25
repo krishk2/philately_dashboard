@@ -16,6 +16,7 @@ from ..models import (
     COURSE_WEEKS,
     LISTING_ACTIVE,
     LISTING_REMOVED,
+    PREBOOK_PAID,
     CourseProgress,
     Follow,
     ForumReply,
@@ -74,7 +75,7 @@ def collection_for(user: User) -> list[CollectionItem]:
         )
     for booking in db.session.scalars(
         select(Prebooking)
-        .where(Prebooking.user_id == user.id)
+        .where(Prebooking.user_id == user.id, Prebooking.status == PREBOOK_PAID)
         .order_by(Prebooking.created_at.desc())
     ):
         issue = booking.issue
@@ -83,8 +84,7 @@ def collection_for(user: User) -> list[CollectionItem]:
                 title=issue.title,
                 image_url=f"/uploads/{issue.reference_image}",
                 detail=(
-                    f"{issue.circle.postal_circle} · {issue.issue_date.year}"
-                    f" · × {booking.quantity}"
+                    f"{issue.circle.postal_circle} · {issue.issue_date.year} · × {booking.quantity}"
                 ),
                 year=issue.issue_date.year,
                 circle=issue.circle.postal_circle,
@@ -105,7 +105,11 @@ def badges_for(user: User, collection: list[CollectionItem] | None = None) -> li
 
     stamps_owned = _count(
         select(func.sum(Order.quantity)).where(Order.buyer_id == user.id)
-    ) + _count(select(func.sum(Prebooking.quantity)).where(Prebooking.user_id == user.id))
+    ) + _count(
+        select(func.sum(Prebooking.quantity)).where(
+            Prebooking.user_id == user.id, Prebooking.status == PREBOOK_PAID
+        )
+    )
     circles = {item.circle for item in collection if item.circle}
     oldest = min((item.year for item in collection if item.year), default=None)
     sales = _count(

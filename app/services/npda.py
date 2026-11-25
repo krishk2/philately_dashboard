@@ -38,7 +38,7 @@ MAX_DEPOSIT = Decimal("100000.00")
 
 
 def _circle_code(circle: str) -> str:
-    words = circle.split()
+    words = [w for w in circle.split() if w.isalpha()]  # "Jammu & Kashmir" -> JK
     return (words[0][0] + words[1][0]) if len(words) > 1 else circle[:2]
 
 

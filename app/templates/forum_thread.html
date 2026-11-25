@@ -1,121 +1,54 @@
-{% from "_site.html" import site_header, site_footer, site_flash with context %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ thread.title }} - Forums</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='site_layout.css') }}">
-    <style>
-        .post {
-            display: grid;
-            grid-template-columns: 56px 1fr;
-            gap: 14px;
-            padding: 16px 0;
-            border-bottom: 1px solid #e3e3e3;
-        }
-
-        .post:last-child {
-            border-bottom: none;
-        }
-
-        .post .profile-avatar {
-            width: 48px;
-            height: 48px;
-            border-color: #ddd;
-        }
-
-        .post .meta {
-            font-size: 13px;
-            color: #666;
-            margin-bottom: 6px;
-        }
-
-        .post .body {
-            white-space: pre-wrap;
-            line-height: 1.5;
-        }
-
-        .post .delete {
-            display: inline;
-        }
-
-        .post .delete button {
-            background: none;
-            border: none;
-            color: #dc3545;
-            cursor: pointer;
-            font-size: 13px;
-            padding: 0;
-        }
-    </style>
-</head>
-<body class="site">
-{{ site_header('forums') }}
-
-{% macro avatar(user) -%}
-  <a href="{{ url_for('community.collector', username=user.username) }}" style="text-decoration:none"><span class="profile-avatar">
-    {%- if user.avatar_filename -%}<img src="{{ url_for('main.uploaded_file', filename=user.avatar_filename) }}" alt="">
-    {%- else -%}{{ user.initials }}{%- endif -%}
-  </span></a>
-{%- endmacro %}
+{% extends "base.html" %}
+{% from "_ui.html" import avatar, csrf with context %}
+{% set active = 'forums' %}
+{% block title %}{{ thread.title }}{% endblock %}
+{% block container_class %}narrow{% endblock %}
 
 {% macro author_line(user, when) -%}
-  <a href="{{ url_for('community.collector', username=user.username) }}" style="color:inherit"><strong>{{ user.display_name }}</strong></a>
+  <a class="author-link" href="{{ url_for('community.collector', username=user.username) }}">{{ user.display_name }}</a>
   {% for b in top_badges(user) %}<span title="{{ b.name }}: {{ b.description }}">{{ b.icon }}</span>{% endfor %}
-  {% if user.is_circle %}<span class="site-pill navy">{{ user.postal_circle }} Postal Circle</span>{% endif %}
-  · {{ when.strftime('%d %b %Y, %H:%M') }}
+  {% if user.is_circle %}<span class="pill navy">{{ user.postal_circle }} Postal Circle</span>{% endif %}
+  <span class="muted small">· {{ when.strftime('%d %b %Y, %H:%M') }}</span>
 {%- endmacro %}
 
-<main class="site-main" style="max-width: 900px">
-    {{ site_flash() }}
-    <p><a href="{{ url_for('community.forums', category=thread.category) }}" class="site-pill navy" style="text-decoration:none;font-size:14px;padding:5px 14px">← {{ thread.category_label }}</a></p>
-
-    <div class="site-card" style="background:white">
-        <h2 style="margin-top:0">{{ thread.title }}</h2>
-        <div class="post">
-            {{ avatar(thread.author) }}
-            <div>
-                <div class="meta">{{ author_line(thread.author, thread.created_at) }}
-                    {% if current_user.is_authenticated and current_user.id == thread.author_id %}
-                    · <form class="delete" method="post" action="{{ url_for('community.delete_thread', thread_id=thread.id) }}" onsubmit="return confirm('Delete this discussion and all replies?')">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Delete</button></form>
-                    {% endif %}
-                </div>
-                <div class="body">{{ thread.body }}</div>
-            </div>
+{% block content %}
+<p><a class="pill navy" style="text-decoration:none" href="{{ url_for('community.forums', category=thread.category) }}">← {{ thread.category_label }}</a></p>
+<section class="card">
+    <h1 style="font-size:1.5rem">{{ thread.title }}</h1>
+    <div class="post">
+        <a href="{{ url_for('community.collector', username=thread.author.username) }}">{{ avatar(thread.author, 'md') }}</a>
+        <div>
+            <div>{{ author_line(thread.author, thread.created_at) }}
+                {% if current_user.is_authenticated and current_user.id == thread.author_id %}
+                · <form style="display:inline" method="post" action="{{ url_for('community.delete_thread', thread_id=thread.id) }}" data-confirm="Delete this discussion and all replies?">{{ csrf() }}<button class="link-btn danger small">Delete</button></form>
+                {% endif %}</div>
+            <div class="body" style="margin-top:6px">{{ thread.body }}</div>
         </div>
-
-        {% for r in thread.replies %}
-        <div class="post" {% if loop.last %}id="latest"{% endif %}>
-            {{ avatar(r.author) }}
-            <div>
-                <div class="meta">{{ author_line(r.author, r.created_at) }}
-                    {% if current_user.is_authenticated and current_user.id == r.author_id %}
-                    · <form class="delete" method="post" action="{{ url_for('community.delete_reply', reply_id=r.id) }}">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button>Delete</button></form>
-                    {% endif %}
-                </div>
-                <div class="body">{{ r.body }}</div>
-            </div>
+    </div>
+    {% for r in thread.replies %}
+    <div class="post" {% if loop.last %}id="latest"{% endif %}>
+        <a href="{{ url_for('community.collector', username=r.author.username) }}">{{ avatar(r.author, 'md') }}</a>
+        <div>
+            <div>{{ author_line(r.author, r.created_at) }}
+                {% if current_user.is_authenticated and current_user.id == r.author_id %}
+                · <form style="display:inline" method="post" action="{{ url_for('community.delete_reply', reply_id=r.id) }}">{{ csrf() }}<button class="link-btn danger small">Delete</button></form>
+                {% endif %}</div>
+            <div class="body" style="margin-top:6px">{{ r.body }}</div>
         </div>
-        {% endfor %}
     </div>
+    {% endfor %}
+</section>
 
-    <div class="site-card">
-        <h3>Reply</h3>
-        {% if current_user.is_authenticated %}
-        <form class="site-form" method="post" action="{{ url_for('community.reply', thread_id=thread.id) }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <textarea name="body" rows="4" maxlength="5000" required aria-label="Your reply"></textarea>
-            <button class="site-btn" type="submit">Post Reply</button>
-        </form>
-        {% else %}
-        <p><a href="{{ url_for('auth.login', next=request.path) }}">Log in</a> to reply.</p>
-        {% endif %}
-    </div>
-</main>
-
-{{ site_footer() }}
-</body>
-</html>
+<section class="card form" style="margin-top:20px">
+    <h2>Reply</h2>
+    {% if current_user.is_authenticated %}
+    <form method="post" action="{{ url_for('community.reply', thread_id=thread.id) }}">
+        {{ csrf() }}
+        <textarea name="body" rows="4" maxlength="5000" required aria-label="Your reply"></textarea>
+        <div class="actions"><button class="btn" type="submit">Post reply</button></div>
+    </form>
+    {% else %}
+    <p><a href="{{ url_for('auth.login', next=request.path) }}">Log in</a> to reply.</p>
+    {% endif %}
+</section>
+{% endblock %}

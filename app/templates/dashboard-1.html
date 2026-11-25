@@ -1,174 +1,110 @@
-{% from "_member_sidebar.html" import member_sidebar with context %}
-{% from "_flash.html" import plain, csrf %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Philatelist Dashboard</title>
-    <!-- Link to Google Fonts for Montserrat and Playfair Display -->
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
-    <!-- Link to your CSS file using url_for -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles_for_dash.css') }}">
-    <style>
-        /* Extra profile widgets, built from the same white card as .profile-section. */
-        .stat-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 15px;
-            margin: 25px 0;
-        }
-        .stat {
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-            padding: 18px;
-            text-align: center;
-        }
-        .stat strong {
-            display: block;
-            font-size: 26px;
-            color: #2d2d44;
-        }
-        .stat span {
-            font-size: 13px;
-            color: #666;
-        }
-        .widget-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-        .widget {
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-            padding: 25px;
-        }
-        .widget h3 {
-            margin-top: 0;
-            font-size: 20px;
-        }
-        .widget a {
-            color: #2d2d44;
-        }
-        .note {
-            padding: 8px 0;
-            border-bottom: 1px solid #eee;
-            font-size: 14px;
-        }
-        .note.unread {
-            font-weight: 600;
-        }
-        .note small {
-            display: block;
-            color: #888;
-            font-weight: normal;
-        }
-        .progress {
-            height: 10px;
-            background: #eee;
-            border-radius: 5px;
-            overflow: hidden;
-            margin: 10px 0;
-        }
-        .progress span {
-            display: block;
-            height: 100%;
-            background: #ffcc00;
-        }
-        .checklist li {
-            margin: 6px 0;
-        }
-        @media (max-width: 900px) {
-            .widget-row { grid-template-columns: 1fr; }
-            .profile-section { flex-direction: column; }
-            .profile-info, .npda-section { width: 100%; }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        {{ member_sidebar('dashboard') }}
-
-        <div class="main-content">
-            <header class="dashboard-header">
-                <h2>Philatelist Dashboard</h2>
-                <p>Welcome, {{ current_user.display_name }} ({{ current_user.email }})</p>
-            </header>
-
-            {{ plain() }}
-
-            <section class="profile-section">
-                <div class="profile-info">
-                    <!-- Link to the profile picture using url_for -->
-                    <img src="{{ url_for('main.uploaded_file', filename=current_user.avatar_filename) if current_user.avatar_filename else url_for('static', filename='profile-placeholder.avif') }}" alt="Profile Picture" class="profile-img">
-                    <h3 class="profile-name">{{ current_user.display_name }}</h3>
-                    <p>Email: {{ current_user.email }}</p>
-                    {% set acct = current_user.npda %}
-                    <p>Membership Type: {{ current_user.membership }} · {{ 'NPDA member' if acct and acct.is_active else 'Non-NPDA member' }}</p>
-                    <p><a href="{{ url_for('member.myprofile') }}">Edit profile</a></p>
+{% extends "base.html" %}
+{% from "_ui.html" import member_nav, avatar with context %}
+{% block title %}My dashboard{% endblock %}
+{% block content %}
+{% set acct = current_user.npda %}
+{% set npda_on = acct and acct.is_active %}
+<div class="account">
+    {{ member_nav('dashboard') }}
+    <div class="stack">
+        <section class="profile-cover">
+            <div class="banner"></div>
+            <div class="info">
+                {{ avatar(current_user, 'lg') }}
+                <div class="who">
+                    <h1>{{ current_user.display_name }}</h1>
+                    <div class="row" style="gap:8px">
+                        <span class="muted">@{{ current_user.username }}</span>
+                        <span class="pill navy">{{ current_user.membership }} member</span>
+                        <span class="pill {{ '' if npda_on else 'grey' }}">{{ 'NPDA member' if npda_on else 'Non-NPDA member' }}</span>
+                    </div>
+                    <p class="muted small" style="margin:6px 0 0">{{ current_user.email }} · joined {{ current_user.created_at.strftime('%B %Y') }}</p>
                 </div>
-
-                <div class="npda-section">
-                    {% if acct and acct.is_active %}
-                    <h3>NPDA Account {{ acct.account_number }}</h3>
-                    <p><strong>Balance: ₹{{ acct.balance }}</strong></p>
-                    <p>Standing order: {{ acct.copies_per_issue }} cop{{ 'y' if acct.copies_per_issue == 1 else 'ies' }} of every new issue from {{ 'all postal circles' if acct.scope == 'all' else acct.home_circle ~ ' Postal Circle' }}, reserved automatically.</p>
-                    <button class="create-npda-btn" onclick="location.href='{{ url_for('member.npda') }}'">Manage NPDA Account</button>
-                    {% else %}
-                    <h3>Create NPDA Account</h3>
-                    <p>National Philatelic Deposit Account allows you to register and manage your philatelic collections and participate in events. Keep a balance, and every new issue is reserved for you automatically.</p>
-                    <button class="create-npda-btn" onclick="location.href='{{ url_for('member.npda') }}'">Create NPDA Account</button>
-                    {% endif %}
+                <div class="row">
+                    <a class="btn ghost" href="{{ url_for('member.myprofile') }}">Edit profile</a>
+                    <a class="btn" href="{{ url_for('community.collector', username=current_user.username) }}">Public profile</a>
                 </div>
+            </div>
+            <div class="stats">
+                <div><strong>{{ stats.bought }}</strong><span>stamps bought</span></div>
+                <div><strong>{{ stats.prebooked }}</strong><span>pre-booked</span></div>
+                <div><strong>{{ stats.listed }}</strong><span>listed</span></div>
+                <div><strong>{{ stats.sold }}</strong><span>sold</span></div>
+                <div><strong>{{ stats.wishlist }}</strong><span>wishlist</span></div>
+            </div>
+        </section>
+
+        <div class="grid cols-2">
+            <section class="card">
+                <div class="card-head"><h2>{{ 'NPDA Account' if npda_on else 'Create NPDA Account' }}</h2>{% if npda_on %}<span class="pill">Active</span>{% endif %}</div>
+                {% if npda_on %}
+                    <p class="muted small" style="margin:0">{{ acct.account_number }}</p>
+                    <div class="price-lg">₹{{ acct.balance }}</div>
+                    <p class="muted">Standing order: {{ acct.copies_per_issue }} cop{{ 'y' if acct.copies_per_issue == 1 else 'ies' }} of every new issue from {{ 'all postal circles' if acct.scope == 'all' else acct.home_circle ~ ' Postal Circle' }}, reserved automatically.</p>
+                    <a class="btn navy" href="{{ url_for('member.npda') }}">Manage NPDA account</a>
+                {% else %}
+                    <p class="muted">Keep a balance and every new issue is reserved for you the moment a postal circle releases it.</p>
+                    <a class="btn navy" href="{{ url_for('member.npda') }}">Create NPDA Account</a>
+                {% endif %}
             </section>
 
-            <div class="widget" style="margin-top:25px">
-                <h3 style="display:flex;justify-content:space-between;align-items:center">Your Badges
-                    <a href="{{ url_for('community.collector', username=current_user.username) }}" style="font-size:14px">View public profile →</a></h3>
-                {% set earned = badges|selectattr('earned')|list %}
-                {% for b in earned %}<span title="{{ b.description }}" style="display:inline-block;margin:4px 10px 4px 0;font-size:15px"><span style="font-size:24px">{{ b.icon }}</span> {{ b.name }}</span>{% endfor %}
-                {% set next_badge = badges|rejectattr('earned')|first %}
-                {% if not earned %}<p>No badges yet.</p>{% endif %}
-                {% if next_badge %}<p style="color:#666;font-size:14px;margin-bottom:0">Next up: {{ next_badge.icon }} <strong>{{ next_badge.name }}</strong>: {{ next_badge.description }} ({{ next_badge.progress }} / {{ next_badge.target }})</p>{% endif %}
-            </div>
+            <section class="card">
+                <div class="card-head"><h2>Activity</h2></div>
+                <div class="stat-tiles" style="grid-template-columns:1fr 1fr">
+                    <div><span class="muted small">SPENT</span><strong style="display:block;font-size:1.3rem">₹{{ stats.spent }}</strong></div>
+                    <div><span class="muted small">EARNED</span><strong style="display:block;font-size:1.3rem">₹{{ stats.earned }}</strong></div>
+                </div>
+                <h3 style="margin-top:16px">Crash Course</h3>
+                <div class="meter"><span style="width: {{ (course_done / course_total * 100)|round }}%"></span></div>
+                <p class="muted small" style="margin-top:6px">{{ course_done }} of {{ course_total }} sections complete · <a href="{{ url_for('community.crash_course') }}">Continue learning →</a></p>
+            </section>
+        </div>
 
-            <div class="stat-grid">
-                <div class="stat"><strong>{{ stats.bought }}</strong><span>stamps bought</span></div>
-                <div class="stat"><strong>{{ stats.prebooked }}</strong><span>copies pre-booked</span></div>
-                <div class="stat"><strong>{{ stats.listed }}</strong><span>stamps listed</span></div>
-                <div class="stat"><strong>{{ stats.sold }}</strong><span>stamps sold</span></div>
-                <div class="stat"><strong>₹{{ stats.spent }}</strong><span>spent</span></div>
-                <div class="stat"><strong>₹{{ stats.earned }}</strong><span>earned</span></div>
-                <div class="stat"><strong>{{ stats.wishlist }}</strong><span>on wishlist</span></div>
+        <section class="card">
+            <div class="card-head">
+                <h2>Your Badges</h2>
+                <a class="small" href="{{ url_for('community.collector', username=current_user.username) }}">View public profile →</a>
             </div>
+            <div class="badge-grid">
+                {% for b in badges %}
+                <div class="badge-card {{ 'locked' if not b.earned }}" title="{{ b.description }}">
+                    <div class="icon">{{ b.icon }}</div>
+                    <h4>{{ b.name }}</h4>
+                    <p>{{ b.description }}</p>
+                    {% if not b.earned %}<div class="meter"><span style="width: {{ (b.progress / b.target * 100)|round }}%"></span></div><p>{{ b.progress }} / {{ b.target }}</p>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </section>
 
-            <div class="widget-row">
-                <div class="widget">
-                    <h3>Recent Notifications</h3>
+        <div class="grid cols-2">
+            <section class="card">
+                <div class="card-head"><h2>Recent Notifications</h2><a class="small" href="{{ url_for('member.notifications') }}">All →</a></div>
+                <ul class="list">
                     {% for n in notifications %}
-                    <div class="note {{ 'unread' if not n.is_read }}">{{ n.message }}{% if n.link %} <a href="{{ n.link }}">View</a>{% endif %}<small>{{ n.created_at.strftime('%d %b, %H:%M') }}</small></div>
+                    <li class="{{ 'unread' if not n.is_read }}">{{ n.message }}{% if n.link %} <a href="{{ n.link }}">View</a>{% endif %}
+                        <div class="muted small" style="font-weight:400">{{ n.created_at.strftime('%d %b, %H:%M') }}</div></li>
                     {% else %}
-                    <p>Nothing yet. NPDA bookings, sales and forum replies will appear here.</p>
+                    <li class="muted">Nothing yet. NPDA bookings, sales and forum replies will appear here.</li>
                     {% endfor %}
-                    <p><a href="{{ url_for('member.notifications') }}">All notifications →</a></p>
-                </div>
+                </ul>
+            </section>
 
-                <div class="widget">
-                    <h3>Getting Started</h3>
-                    <ul class="checklist">
-                        <li>{{ '✅' if current_user.profile_complete else '⬜' }} <a href="{{ url_for('member.myprofile') }}">Complete your profile</a> (name, phone, address)</li>
-                        <li>{{ '✅' if acct and acct.is_active else '⬜' }} <a href="{{ url_for('member.npda') }}">Open an NPDA account</a></li>
-                        <li>{{ '✅' if stats.bought or stats.prebooked else '⬜' }} <a href="{{ url_for('main.buyer_home') }}">Get your first stamp</a></li>
-                        <li>{{ '✅' if stats.listed else '⬜' }} <a href="{{ url_for('main.sell_stamp') }}">List a stamp for sale</a></li>
-                    </ul>
-                    <h3>Crash Course</h3>
-                    <div class="progress"><span style="width: {{ (course_done / course_total * 100)|round }}%"></span></div>
-                    <p>{{ course_done }} of {{ course_total }} sections complete · <a href="{{ url_for('community.crash_course') }}">Continue learning →</a></p>
-                </div>
-            </div>
+            <section class="card">
+                <div class="card-head"><h2>Getting Started</h2></div>
+                <ul class="list checklist">
+                    {% for done, link, label in [
+                        (current_user.profile_complete, url_for('member.myprofile'), 'Complete your profile'),
+                        (npda_on, url_for('member.npda'), 'Open an NPDA account'),
+                        (stats.bought or stats.prebooked, url_for('main.buyer_home'), 'Get your first stamp'),
+                        (stats.listed, url_for('main.sell_stamp'), 'List a stamp for sale'),
+                        (course_done == course_total, url_for('community.crash_course'), 'Finish the crash course'),
+                    ] %}
+                    <li><span class="check-icon {{ 'done' if done }}">{{ '✓' if done else '' }}</span><a href="{{ link }}">{{ label }}</a></li>
+                    {% endfor %}
+                </ul>
+            </section>
         </div>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}

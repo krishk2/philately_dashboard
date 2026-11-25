@@ -31,16 +31,38 @@ ROLE_COLLECTOR = "collector"
 ROLE_CIRCLE = "circle"
 ROLES = (ROLE_COLLECTOR, ROLE_CIRCLE)
 
+# India Post's 23 postal circles.
 POSTAL_CIRCLES = (
     "Andhra Pradesh",
+    "Assam",
+    "Bihar",
+    "Chhattisgarh",
     "Delhi",
+    "Gujarat",
+    "Haryana",
+    "Himachal Pradesh",
+    "Jammu & Kashmir",
+    "Jharkhand",
     "Karnataka",
     "Kerala",
+    "Madhya Pradesh",
     "Maharashtra",
+    "North East",
+    "Odisha",
+    "Punjab",
+    "Rajasthan",
     "Tamil Nadu",
     "Telangana",
+    "Uttar Pradesh",
+    "Uttarakhand",
     "West Bengal",
 )
+
+PREBOOK_PENDING = "pending"
+PREBOOK_PAID = "paid"
+PREBOOK_EXPIRED = "expired"
+PREBOOK_CANCELLED = "cancelled"
+PREBOOK_STATUSES = (PREBOOK_PENDING, PREBOOK_PAID, PREBOOK_EXPIRED, PREBOOK_CANCELLED)
 
 LISTING_ACTIVE = "active"
 LISTING_SOLD_OUT = "sold_out"
@@ -62,6 +84,8 @@ class User(UserMixin, TimestampMixin, db.Model):
     username: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
+    # False for accounts created through Google/Yahoo until the user sets a password.
+    password_set: Mapped[bool] = mapped_column(default=True, server_default="1")
     role: Mapped[str] = mapped_column(String(16), default=ROLE_COLLECTOR)
     postal_circle: Mapped[str | None] = mapped_column(String(64))
     full_name: Mapped[str | None] = mapped_column(String(120))
@@ -158,11 +182,26 @@ class Prebooking(TimestampMixin, db.Model):
     issue_id: Mapped[int] = mapped_column(ForeignKey("issues.id"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     quantity: Mapped[int] = mapped_column(Integer)
+    # pending: copies held while the collector pays; paid: confirmed;
+    # expired / cancelled: the copies went back to the issue's stock.
+    status: Mapped[str] = mapped_column(
+        String(10), default=PREBOOK_PAID, server_default=PREBOOK_PAID, index=True
+    )
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    payment_ref: Mapped[str | None] = mapped_column(String(32))
 
     issue: Mapped[Issue] = relationship(back_populates="prebookings")
     user: Mapped[User] = relationship()
 
-    __table_args__ = (CheckConstraint("quantity > 0", name="ck_prebookings_qty_pos"),)
+    __table_args__ = (
+        CheckConstraint("quantity > 0", name="ck_prebookings_qty_pos"),
+        CheckConstraint(f"status IN {PREBOOK_STATUSES}", name="ck_prebookings_status"),
+    )
+
+    @property
+    def total(self) -> Decimal:
+        return self.issue.denomination * self.quantity
 
 
 class Listing(TimestampMixin, db.Model):
@@ -495,6 +534,9 @@ class FeedItem(db.Model):
     denomination: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     stamp_count: Mapped[int | None] = mapped_column(Integer)
     summary: Mapped[str] = mapped_column(Text, default="")
+    # The source's own image of the stamp. Only displayed when FEED_SHOW_SOURCE_IMAGES is on,
+    # because India Post requires permission for any use of stamp images.
+    image_url: Mapped[str | None] = mapped_column(String(500))
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     __table_args__ = (UniqueConstraint("source", "external_id", name="uq_feed_source_item"),)

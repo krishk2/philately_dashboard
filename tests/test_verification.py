@@ -117,6 +117,7 @@ def test_summary_rules():
 
 
 def test_vision_mismatch_on_year_warns(app, alice):
+    app.config["GEMINI_API_KEY"] = "test-key"
     seen = VisionResult(True, "India", 1999, "Rs 5", "Clear photo.")
     with patch.object(verification, "analyse_stamp_image", return_value=seen):
         listing = svc.create_listing(alice, listing_data(year=2024), upload(1))
@@ -125,6 +126,7 @@ def test_vision_mismatch_on_year_warns(app, alice):
 
 
 def test_vision_not_a_stamp_fails(app, alice):
+    app.config["GEMINI_API_KEY"] = "test-key"
     seen = VisionResult(False, None, None, None, "This is a coin.")
     with patch.object(verification, "analyse_stamp_image", return_value=seen):
         listing = svc.create_listing(alice, listing_data(), upload(1))
@@ -132,13 +134,23 @@ def test_vision_not_a_stamp_fails(app, alice):
 
 
 def test_vision_consistent_passes(app, alice):
+    app.config["GEMINI_API_KEY"] = "test-key"
     seen = VisionResult(True, "India", 2024, "Rs 5", "")
     with patch.object(verification, "analyse_stamp_image", return_value=seen):
         listing = svc.create_listing(alice, listing_data(year=2024), upload(1))
     assert results(listing)["ai_vision"] == "pass"
 
 
+def test_vision_without_key_skips_without_reading_image(app, alice, monkeypatch):
+    import app.services.uploads as uploads
+
+    monkeypatch.setattr(uploads, "read_image", lambda name: (_ for _ in ()).throw(AssertionError))
+    listing = svc.create_listing(alice, listing_data(), upload(1))
+    assert results(listing)["ai_vision"] == "skipped"
+
+
 def test_vision_outage_is_skipped_not_fatal(app, alice):
+    app.config["GEMINI_API_KEY"] = "test-key"
     with patch.object(
         verification, "analyse_stamp_image", side_effect=VisionUnavailable("timeout")
     ):
