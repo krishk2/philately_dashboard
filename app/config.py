@@ -63,6 +63,13 @@ class Config:
     FEED_SHOW_SOURCE_IMAGES = _flag("FEED_SHOW_SOURCE_IMAGES", False)
     FEED_DETAIL_FETCH_LIMIT = int(os.environ.get("FEED_DETAIL_FETCH_LIMIT", "10"))
 
+    # Background jobs: run them immediately in the web process (no worker needed), or leave them
+    # for `flask worker` / `flask run-jobs`. Production turns inline off.
+    JOBS_INLINE = _flag("JOBS_INLINE", True)
+    FEED_REFRESH_HOURS = float(os.environ.get("FEED_REFRESH_HOURS", "6"))
+    # Badges shown next to names (forums, directory) are cached for this many seconds.
+    BADGE_CACHE_SECONDS = int(os.environ.get("BADGE_CACHE_SECONDS", "300"))
+
     # Pre-bookings hold stock for this long while the buyer pays; unpaid ones then expire.
     PREBOOK_HOLD_MINUTES = int(os.environ.get("PREBOOK_HOLD_MINUTES", "30"))
 
@@ -113,15 +120,18 @@ class TestingConfig(Config):
     RATELIMIT_ENABLED = False
     STORAGE_BACKEND = "local"
     FEED_SHOW_SOURCE_IMAGES = False
+    BADGE_CACHE_SECONDS = 0
+    FEED_REFRESH_HOURS = 0  # never fetch real feeds from tests
 
 
 class ProductionConfig(Config):
     # HTTPS-only cookies and https:// external URLs (needed for SSO redirect URIs).
-    SESSION_COOKIE_SECURE = True
-    REMEMBER_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = _flag("SESSION_COOKIE_SECURE", True)
+    REMEMBER_COOKIE_SECURE = _flag("SESSION_COOKIE_SECURE", True)
     REMEMBER_COOKIE_HTTPONLY = True
     PREFERRED_URL_SCHEME = "https"
     TRUST_PROXY = _flag("TRUST_PROXY", True)
+    JOBS_INLINE = _flag("JOBS_INLINE", False)
 
 
 CONFIGS = {

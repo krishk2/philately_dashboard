@@ -86,6 +86,21 @@ def register_cli(app: Flask) -> None:
         if failed:
             raise SystemExit(1)
 
+    @app.cli.command("worker")
+    def worker():
+        """Run background jobs and periodic tasks until stopped."""
+        from .services.jobs import work_forever
+
+        click.echo("Worker running (Ctrl+C to stop)")
+        work_forever()
+
+    @app.cli.command("run-jobs")
+    def run_jobs():
+        """One pass: queue due periodic tasks, run due jobs, exit (for cron / scheduled tasks)."""
+        from .services.jobs import run_once
+
+        click.echo(run_once())
+
     @app.cli.command("seed")
     def seed():
         """Insert demo data (only into an empty database)."""

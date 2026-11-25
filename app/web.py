@@ -218,6 +218,29 @@ def ask():
     return jsonify({"response": assistant.reply(str(body.get("message", "")))})
 
 
+@bp.route("/healthz")
+def healthz():
+    """Load balancer / container health check: is the app up and can it reach the database?"""
+    from sqlalchemy import text
+
+    from .services.jobs import queue_depth
+
+    try:
+        db.session.execute(text("SELECT 1"))
+    except Exception:  # noqa: BLE001
+        current_app.logger.exception("Health check: database unreachable")
+        return jsonify({"status": "error", "database": "unreachable"}), 503
+    last = feeds.last_import()
+    return jsonify(
+        {
+            "status": "ok",
+            "database": "ok",
+            "queued_jobs": queue_depth(),
+            "feeds_last_import": last.isoformat() if last else None,
+        }
+    )
+
+
 @bp.route("/uploads/<path:filename>")
 def uploaded_file(filename):
     storage = get_storage()

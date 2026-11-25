@@ -394,9 +394,13 @@ def create_issue(circle: User, data, image) -> Issue:
     db.session.commit()
 
     # NPDA standing orders: subscribers get their copies reserved as soon as the issue is out.
-    from .npda import fulfil_new_issue  # local import: npda depends on this module
+    # Queued as a background job so the circle doesn't wait while thousands of subscribers are
+    # served; with JOBS_INLINE it runs right away and the result is available here.
+    from .jobs import enqueue  # local import: jobs depends on this module
 
-    issue.npda_result = fulfil_new_issue(issue)
+    job = enqueue("npda_fulfil", {"issue_id": issue.id})
+    issue.npda_result = job.result if job.status == "done" else None
+    db.session.refresh(issue)
     return issue
 
 

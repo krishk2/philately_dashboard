@@ -559,3 +559,31 @@ class Follow(TimestampMixin, db.Model):
         UniqueConstraint("follower_id", "followed_id", name="uq_follow_pair"),
         CheckConstraint("follower_id <> followed_id", name="ck_follow_not_self"),
     )
+
+
+# ---------- background jobs ----------
+
+JOB_QUEUED = "queued"
+JOB_RUNNING = "running"
+JOB_DONE = "done"
+JOB_FAILED = "failed"
+
+
+class Job(TimestampMixin, db.Model):
+    """A unit of background work, stored in the database so no extra broker is needed.
+
+    Workers claim jobs with a conditional UPDATE (queued -> running), so two workers never run
+    the same job. Failed jobs are retried with a backoff, up to MAX_ATTEMPTS.
+    """
+
+    __tablename__ = "jobs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    kind: Mapped[str] = mapped_column(String(32), index=True)
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(10), default=JOB_QUEUED, index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    run_after: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    result: Mapped[dict | None] = mapped_column(JSON)
+    last_error: Mapped[str | None] = mapped_column(Text)

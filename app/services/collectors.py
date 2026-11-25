@@ -7,8 +7,10 @@ profile shows as "3 / 10" for badges not yet earned.
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 
+from flask import current_app
 from sqlalchemy import func, select
 
 from ..extensions import db
@@ -178,8 +180,40 @@ def badges_for(user: User, collection: list[CollectionItem] | None = None) -> li
     ]
 
 
+# Small in-process cache for badges shown next to names (forum posts, the directory). Badges
+# change slowly, so a few minutes of staleness is fine and saves ~10 queries per author.
+_BADGE_CACHE: dict[int, tuple[float, list[Badge]]] = {}
+
+
 def earned_badges(user: User) -> list[Badge]:
-    return [b for b in badges_for(user) if b.earned]
+    ttl = current_app.config.get("BADGE_CACHE_SECONDS", 0)
+    now = time.monotonic()
+    cached = _BADGE_CACHE.get(user.id)
+    if ttl and cached and cached[0] > now:
+        return cached[1]
+    earned = [b for b in badges_for(user) if b.earned]
+    if ttl:
+        if len(_BADGE_CACHE) > 5000:  # keep memory bounded
+            _BADGE_CACHE.clear()
+        _BADGE_CACHE[user.id] = (now + ttl, earned)
+    return earned
+
+
+def _collection_sizes() -> dict[int, int]:
+    """Items in each user's collection (distinct purchases + paid pre-bookings), in two queries
+    for everyone at once instead of two per user."""
+    sizes: dict[int, int] = {}
+    for user_id, n in db.session.execute(
+        select(Order.buyer_id, func.count(Order.id)).group_by(Order.buyer_id)
+    ):
+        sizes[user_id] = sizes.get(user_id, 0) + n
+    for user_id, n in db.session.execute(
+        select(Prebooking.user_id, func.count(Prebooking.id))
+        .where(Prebooking.status == PREBOOK_PAID)
+        .group_by(Prebooking.user_id)
+    ):
+        sizes[user_id] = sizes.get(user_id, 0) + n
+    return sizes
 
 
 def for_sale(user: User) -> list[Listing]:
@@ -252,9 +286,10 @@ def directory(query: str = "") -> list[tuple[User, list[Badge], int]]:
         pattern = f"%{query}%"
         stmt = stmt.where((User.username.ilike(pattern)) | (User.full_name.ilike(pattern)))
     rows = []
+    sizes = _collection_sizes()
     for user in db.session.scalars(stmt.limit(200)):
-        collection = collection_for(user) if user.show_collection else []
-        earned = [b for b in badges_for(user, collection) if b.earned]
-        rows.append((user, earned, len(collection)))
+        rows.append(
+            (user, earned_badges(user), sizes.get(user.id, 0) if user.show_collection else 0)
+        )
     rows.sort(key=lambda r: (len(r[1]), r[2]), reverse=True)
     return rows

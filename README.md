@@ -125,19 +125,47 @@ BK-tree or multi-index hashing would find near neighbours without comparing ever
 - **Passwords** are hashed with Werkzeug (scrypt). Usernames and emails are unique, ignoring case.
 - **API tokens** are signed with `itsdangerous` and expire after 7 days. Each token embeds part of
   the password hash, so changing a password revokes old tokens.
-- **Uploads** are decoded with Pillow, not trusted by extension, re-saved under a random name and
-  capped at 5 MB.
+- **Uploads** are decoded with Pillow, not trusted by extension, re-encoded under a random name
+  (which strips metadata such as GPS), scaled down past 2400 px and capped at 5 MB. They go to
+  local disk or any S3-compatible bucket (`STORAGE_BACKEND=s3`).
+- **Pre-bookings hold stock while you pay.** A booking is *pending* for `PREBOOK_HOLD_MINUTES`.
+  Unpaid holds expire and return their copies exactly once (a status-flip guard). Payment goes
+  through a simulated card gateway (`services/payments.py`) that never stores card data.
+- **Rate limits** on login, registration, SSO, API tokens, payment and the chatbot (Flask-Limiter;
+  use Redis to share counters between processes).
+- **Behind a proxy** (`TRUST_PROXY`): ProxyFix gives correct `https://` URLs (SSO redirects) and
+  client IPs (rate limits). Production uses secure, HttpOnly, SameSite cookies, HSTS and basic
+  security headers.
+- **Background jobs** live in a `jobs` table (no Redis/Celery needed). Publishing an issue queues
+  the NPDA run, and `flask worker` runs jobs plus periodic tasks (expire holds, re-import feeds).
+  `JOBS_INLINE=1` runs jobs immediately for development or a deploy without a worker. Failed jobs
+  retry with backoff. An importer that parses 0 items counts as a failure, so layout changes
+  get noticed.
 - **CSRF** protection on every HTML form. `?next=` redirects only allow local paths.
 - **Removing a listing is a soft delete**, so past orders keep their history.
 
 ## Running it
 
-### Docker (Postgres + gunicorn)
+### Docker (Postgres + Redis + gunicorn + worker)
 
 ```bash
 cp .env.example .env        # set SECRET_KEY
-docker compose up --build
+docker compose up --build   # web (runs migrations) + worker + postgres + redis
 docker compose exec web flask seed   # optional demo data
+```
+
+### Deploying
+
+See [deploy/aws/README.md](deploy/aws/README.md) for AWS (ECS Fargate + RDS + S3 + ALB). The
+image has a `/healthz` endpoint and runs as `web`, `worker`, `migrate` or `run-jobs`.
+
+### Load testing
+
+[loadtest/locustfile.py](loadtest/locustfile.py) simulates browsers, logged-in collectors who
+pre-book and pay, and API clients:
+
+```bash
+uv run --with locust locust -f loadtest/locustfile.py --host https://staging.example.com
 ```
 
 Open http://localhost:8000 for the login page, or http://localhost:8000/home for the community

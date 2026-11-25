@@ -1,3 +1,22 @@
+x-app: &app
+  build: .
+  environment: &env
+    DATABASE_URL: postgresql+psycopg://philately:${POSTGRES_PASSWORD:-philately-local}@db:5432/philately
+    SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
+    GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    UPLOAD_FOLDER: /app/instance/uploads
+    RATELIMIT_STORAGE_URI: redis://redis:6379/0
+    # Local docker runs over plain http on localhost.
+    SESSION_COOKIE_SECURE: "0"
+    TRUST_PROXY: "0"
+  volumes:
+    - uploads:/app/instance/uploads
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_started
+
 services:
   db:
     image: postgres:16-alpine
@@ -13,20 +32,22 @@ services:
       timeout: 3s
       retries: 10
 
+  # Shared rate-limit counters across gunicorn workers and containers.
+  redis:
+    image: redis:7-alpine
+
   web:
-    build: .
+    <<: *app
+    command: ["web"]
+    environment:
+      <<: *env
+      RUN_MIGRATIONS: "1"
     ports:
       - "8000:8000"
-    environment:
-      DATABASE_URL: postgresql+psycopg://philately:${POSTGRES_PASSWORD:-philately-local}@db:5432/philately
-      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      UPLOAD_FOLDER: /app/instance/uploads
-    volumes:
-      - uploads:/app/instance/uploads
-    depends_on:
-      db:
-        condition: service_healthy
+
+  worker:
+    <<: *app
+    command: ["worker"]
 
 volumes:
   pgdata:

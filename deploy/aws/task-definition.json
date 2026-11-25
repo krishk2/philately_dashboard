@@ -1,0 +1,49 @@
+{
+  "family": "philately-web",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/philately-task-execution",
+  "taskRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/philately-task",
+  "runtimePlatform": { "cpuArchitecture": "X86_64", "operatingSystemFamily": "LINUX" },
+  "containerDefinitions": [
+    {
+      "name": "app",
+      "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/philately:latest",
+      "command": ["web"],
+      "essential": true,
+      "portMappings": [{ "containerPort": 8000, "protocol": "tcp" }],
+      "environment": [
+        { "name": "FLASK_ENV_NAME", "value": "production" },
+        { "name": "STORAGE_BACKEND", "value": "s3" },
+        { "name": "S3_BUCKET", "value": "<UPLOADS_BUCKET>" },
+        { "name": "S3_REGION", "value": "<REGION>" },
+        { "name": "TRUST_PROXY", "value": "1" },
+        { "name": "JOBS_INLINE", "value": "0" },
+        { "name": "WEB_CONCURRENCY", "value": "2" },
+        { "name": "RATELIMIT_STORAGE_URI", "value": "memory://" }
+      ],
+      "secrets": [
+        { "name": "SECRET_KEY", "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT_ID>:secret:philately/SECRET_KEY" },
+        { "name": "DATABASE_URL", "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT_ID>:secret:philately/DATABASE_URL" }
+      ],
+      "healthCheck": {
+        "command": ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=4)\""],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 20
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/philately",
+          "awslogs-region": "<REGION>",
+          "awslogs-stream-prefix": "web",
+          "awslogs-create-group": "true"
+        }
+      }
+    }
+  ]
+}

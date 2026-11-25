@@ -139,7 +139,9 @@ def add_stamp():
         issue = svc.create_issue(current_user, data, request.files.get("stampImage"))
         r = issue.npda_result
         message = "Stamp added successfully!"
-        if any(r.values()):
+        if r is None:
+            message += " NPDA subscribers are being booked in the background."
+        elif any(r.values()):
             message += (
                 f" NPDA standing orders: {r['booked']} subscriber(s) booked automatically, "
                 f"{r['low_balance']} skipped for low balance, {r['sold_out']} missed (sold out)."

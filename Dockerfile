@@ -15,7 +15,10 @@ RUN uv sync --frozen --no-dev --no-install-project
 
 COPY . .
 
-RUN useradd --create-home appuser && mkdir -p /app/instance/uploads && chown -R appuser /app/instance
+RUN useradd --create-home appuser \
+    && mkdir -p /app/instance/uploads \
+    && chown -R appuser /app/instance \
+    && chmod +x /app/docker-entrypoint.sh
 USER appuser
 
 ENV PATH="/app/.venv/bin:$PATH" \
@@ -24,5 +27,9 @@ ENV PATH="/app/.venv/bin:$PATH" \
 
 EXPOSE 8000
 
-# Apply migrations, then serve with gunicorn.
-CMD ["sh", "-c", "flask db upgrade && gunicorn --bind 0.0.0.0:8000 --workers 2 --access-logfile - wsgi:app"]
+# Used by Docker/ECS to restart an unhealthy container (the ALB uses /healthz too).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=4).status == 200 else 1)" || exit 1
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+CMD ["web"]

@@ -31,9 +31,9 @@ from urllib.parse import urljoin, urlsplit
 
 import feedparser
 import requests
-from requests.utils import requote_uri
 from bs4 import BeautifulSoup
 from flask import current_app
+from requests.utils import requote_uri
 from sqlalchemy import select
 
 from ..extensions import db
@@ -286,6 +286,9 @@ def import_source(source: Source, fetcher=fetch) -> SourceResult:
         content = fetcher(source.url)
         if source.parser == "india_post":
             items = parse_india_post(content, source.url)
+            if not items:
+                # The page loaded but nothing parsed: the site's layout probably changed.
+                raise ValueError("parsed 0 items; the page layout may have changed")
             _add_release_images(source, items, fetcher)
         else:
             items = parse_rss(content, source.kind)
