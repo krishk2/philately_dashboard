@@ -101,3 +101,46 @@ def change_password(user: User, current: str, new: str, confirm: str) -> None:
         raise ValidationError("New passwords do not match.")
     user.set_password(new)
     db.session.commit()
+
+
+MEMBERSHIPS = ("Basic", "Premium")
+
+
+def _normalise_email(value: str) -> str:
+    try:
+        return validate_email((value or "").strip(), check_deliverability=False).normalized
+    except EmailNotValidError as exc:
+        raise ValidationError("Enter a valid email address.") from exc
+
+
+def change_email(user: User, email: str) -> None:
+    email = _normalise_email(email)
+    if email.lower() == user.email.lower():
+        return
+    taken = db.session.scalar(
+        select(User.id).where(func.lower(User.email) == email.lower(), User.id != user.id)
+    )
+    if taken is not None:
+        raise ValidationError("That email is already registered.")
+    user.email = email
+
+
+def update_profile(user: User, data, picture=None) -> None:
+    """Save the My Profile form: full name, email, membership and an optional picture."""
+    from .uploads import delete_image, save_image
+
+    full_name = (data.get("name") or "").strip()
+    if not full_name or len(full_name) > 120:
+        raise ValidationError("Full name is required (up to 120 characters).")
+    membership = data.get("membership") or "Basic"
+    if membership not in MEMBERSHIPS:
+        raise ValidationError("Choose a membership type.")
+    change_email(user, data.get("email", ""))
+    user.full_name = full_name
+    user.membership = membership
+    if picture is not None and picture.filename:
+        old = user.avatar_filename
+        user.avatar_filename, _ = save_image(picture)
+        if old:
+            delete_image(old)
+    db.session.commit()

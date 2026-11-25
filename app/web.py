@@ -1,13 +1,18 @@
-"""Server-rendered pages for collectors: browse, sell, buy, wishlist, issues and events."""
+"""Public pages and the marketplace (Stamp Mela), served with the original templates.
+
+URLs and form field names follow the original app, so the templates keep their markup. The
+handlers translate those field names into the service layer's arguments.
+"""
 
 from datetime import date
-from decimal import Decimal
+from functools import wraps
 
 from flask import (
     Blueprint,
     abort,
     current_app,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -15,38 +20,91 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
-from sqlalchemy import select
+from sqlalchemy import func, select
 
-from .extensions import db
-from .models import LISTING_ACTIVE, LISTING_REMOVED, Event, Issue, Listing, Order, WishlistItem
+from .extensions import csrf, db
+from .models import (
+    LISTING_ACTIVE,
+    LISTING_REMOVED,
+    CircleUpdate,
+    Event,
+    Issue,
+    Listing,
+    Order,
+    Prebooking,
+    WishlistItem,
+)
+from .services import assistant
 from .services import marketplace as svc
 from .services.errors import DomainError
 
 bp = Blueprint("main", __name__)
 
 
-def _flash_error(exc: DomainError) -> None:
-    flash(exc.message, "error")
+def collector_required(view):
+    """Logged-in philatelist accounts only. Postal circles are sent to their dashboard."""
+
+    @wraps(view)
+    @login_required
+    def wrapper(*args, **kwargs):
+        if current_user.is_circle:
+            flash("Postal circle accounts can't buy or sell stamps.", "error")
+            return redirect(url_for("circle.dashboard"))
+        return view(*args, **kwargs)
+
+    return wrapper
 
 
-def _optional(value, parser):
-    value = (value or "").strip()
-    if not value:
-        return None
-    try:
-        return parser(value)
-    except (ValueError, ArithmeticError):
-        return None
+def _wishlist_ids() -> set[int]:
+    if not current_user.is_authenticated:
+        return set()
+    return set(
+        db.session.scalars(
+            select(WishlistItem.listing_id).where(WishlistItem.user_id == current_user.id)
+        )
+    )
 
 
-@bp.route("/")
-def index():
-    latest = db.session.scalars(svc.search_listings().limit(6)).all()
-    issues = db.session.scalars(select(Issue).order_by(Issue.issue_date.desc()).limit(3)).all()
+def _visible_listing(listing_id: int) -> Listing:
+    listing = db.get_or_404(Listing, listing_id)
+    if listing.status == LISTING_REMOVED and (
+        not current_user.is_authenticated or current_user.id != listing.seller_id
+    ):
+        abort(404)
+    return listing
+
+
+# ---------- community pages ----------
+
+
+@bp.route("/home")
+def home():
+    today = date.today()
     events = db.session.scalars(
-        select(Event).where(Event.date >= date.today()).order_by(Event.date).limit(3)
+        select(Event).where(Event.date >= today).order_by(Event.date).limit(10)
     ).all()
-    return render_template("index.html", latest=latest, issues=issues, events=events)
+    releases = db.session.scalars(select(Issue).order_by(Issue.issue_date.desc()).limit(5)).all()
+    news = db.session.scalars(
+        select(CircleUpdate).order_by(CircleUpdate.created_at.desc()).limit(5)
+    ).all()
+    return render_template("landing.html", events=events, releases=releases, news=news)
+
+
+@bp.route("/philately_crash_course")
+def philately_crash_course():
+    return render_template("philately_crash_course.html")
+
+
+@bp.route("/stamp_museum")
+def stamp_museum():
+    return render_template("stamp_museum.html")
+
+
+@bp.post("/ask")
+@csrf.exempt  # read-only JSON endpoint: it changes no state, so there is nothing to forge
+def ask():
+    body = request.get_json(silent=True) or {}
+    return jsonify({"response": assistant.reply(str(body.get("message", "")))})
 
 
 @bp.route("/uploads/<path:filename>")
@@ -54,147 +112,129 @@ def uploaded_file(filename):
     return send_from_directory(current_app.config["UPLOAD_FOLDER"], filename, max_age=86400)
 
 
-# ---------- listings ----------
+# ---------- stamp store: pre-booking official issues ----------
 
 
-@bp.route("/listings")
-def listings():
-    filters = {
-        "query": request.args.get("q", "").strip(),
-        "year": _optional(request.args.get("year"), int),
-        "min_price": _optional(request.args.get("min_price"), Decimal),
-        "max_price": _optional(request.args.get("max_price"), Decimal),
-        "verified_only": request.args.get("verified") == "1",
-    }
-    page = db.paginate(svc.search_listings(**filters), per_page=12, error_out=False)
-    return render_template("listings/list.html", page=page, args=request.args)
+@bp.route("/stamp_store")
+def stamp_store():
+    issues = db.session.scalars(select(Issue).order_by(Issue.issue_date.desc())).all()
+    return render_template("stamp_store.html", issues=issues)
 
 
-@bp.route("/listings/<int:listing_id>")
-def listing_detail(listing_id):
-    listing = db.get_or_404(Listing, listing_id)
-    if listing.status == LISTING_REMOVED and (
-        not current_user.is_authenticated or current_user.id != listing.seller_id
-    ):
-        abort(404)
-    in_wishlist = current_user.is_authenticated and db.session.scalar(
-        select(WishlistItem.id).where(
-            WishlistItem.user_id == current_user.id, WishlistItem.listing_id == listing.id
-        )
-    )
-    return render_template("listings/detail.html", listing=listing, in_wishlist=in_wishlist)
-
-
-def _issue_choices():
-    return db.session.scalars(select(Issue).order_by(Issue.issue_date.desc())).all()
-
-
-@bp.route("/listings/new", methods=["GET", "POST"])
-@login_required
-def listing_new():
-    if current_user.is_circle:
-        flash("Postal circle accounts publish official issues instead of listings.", "info")
-        return redirect(url_for("circle.dashboard"))
-    if request.method == "POST":
-        try:
-            listing = svc.create_listing(current_user, request.form, request.files.get("image"))
-        except DomainError as exc:
-            _flash_error(exc)
-            return render_template(
-                "listings/form.html", form=request.form, issues=_issue_choices(), listing=None
-            ), exc.status_code
-        flash("Listing published and verification run.", "success")
-        return redirect(url_for("main.listing_detail", listing_id=listing.id))
-    return render_template("listings/form.html", form={}, issues=_issue_choices(), listing=None)
-
-
-@bp.route("/listings/<int:listing_id>/edit", methods=["GET", "POST"])
-@login_required
-def listing_edit(listing_id):
-    listing = db.get_or_404(Listing, listing_id)
-    if listing.seller_id != current_user.id:
-        abort(403)
-    if request.method == "POST":
-        try:
-            svc.update_listing(listing, current_user, request.form)
-        except DomainError as exc:
-            _flash_error(exc)
-            return render_template(
-                "listings/form.html", form=request.form, issues=_issue_choices(), listing=listing
-            ), exc.status_code
-        flash("Listing updated and re-verified.", "success")
-        return redirect(url_for("main.listing_detail", listing_id=listing.id))
-    form = {
-        "title": listing.title,
-        "year": listing.year,
-        "price": listing.price,
-        "quantity": listing.quantity,
-        "description": listing.description,
-        "issue_id": listing.issue_id or "",
-    }
-    return render_template(
-        "listings/form.html", form=form, issues=_issue_choices(), listing=listing
-    )
-
-
-@bp.post("/listings/<int:listing_id>/delete")
-@login_required
-def listing_delete(listing_id):
-    listing = db.get_or_404(Listing, listing_id)
-    try:
-        svc.remove_listing(listing, current_user)
-    except DomainError as exc:
-        _flash_error(exc)
-        return redirect(url_for("main.listing_detail", listing_id=listing_id))
-    flash("Listing removed.", "info")
-    return redirect(url_for("main.my_listings"))
-
-
-@bp.post("/listings/<int:listing_id>/verify")
-@login_required
-def listing_verify(listing_id):
-    listing = db.get_or_404(Listing, listing_id)
-    try:
-        svc.reverify_listing(listing, current_user)
-        flash("Verification re-run.", "success")
-    except DomainError as exc:
-        _flash_error(exc)
-    return redirect(url_for("main.listing_detail", listing_id=listing_id))
-
-
-@bp.route("/me/listings")
-@login_required
-def my_listings():
-    rows = db.session.scalars(
-        select(Listing)
-        .where(Listing.seller_id == current_user.id, Listing.status != LISTING_REMOVED)
-        .order_by(Listing.created_at.desc())
+@bp.route("/pre_book")
+@bp.route("/pre_book/<int:issue_id>")
+@collector_required
+def pre_book(issue_id=None):
+    issues = db.session.scalars(
+        select(Issue).where(Issue.prebook_available > 0).order_by(Issue.issue_date.desc())
     ).all()
-    return render_template("listings/mine.html", listings=rows)
+    return render_template("pre_book.html", issues=issues, selected=issue_id)
 
 
-# ---------- orders ----------
-
-
-@bp.post("/listings/<int:listing_id>/buy")
-@login_required
-def buy(listing_id):
+@bp.post("/submit_order")
+@collector_required
+def submit_order():
     try:
-        order = svc.place_order(
-            current_user,
-            listing_id,
-            request.form.get("quantity", 1),
-            request.form.get("shipping_address"),
-        )
+        issue_id = svc.parse_int(request.form.get("stampType"), "Stamp type", minimum=1)
+        booking = svc.prebook_issue(current_user, issue_id, request.form.get("quantity"))
     except DomainError as exc:
-        _flash_error(exc)
-        return redirect(url_for("main.listing_detail", listing_id=listing_id))
-    flash(f"Order #{order.id} placed. Total: ₹{order.total}.", "success")
-    return redirect(url_for("main.orders"))
+        flash(exc.message, "error")
+        return redirect(url_for("main.pre_book"))
+    return redirect(url_for("main.payment", booking_id=booking.id))
 
 
-@bp.route("/me/orders")
-@login_required
+@bp.route("/payment/<int:booking_id>")
+@collector_required
+def payment(booking_id):
+    booking = db.get_or_404(Prebooking, booking_id)
+    if booking.user_id != current_user.id:
+        abort(404)
+    total = booking.issue.denomination * booking.quantity
+    return render_template("payment.html", booking=booking, total_amount=total)
+
+
+# ---------- Stamp Mela marketplace ----------
+
+
+@bp.route("/stamp_mela")
+def stamp_mela():
+    return render_template("index.html")
+
+
+@bp.post("/submit")
+def submit():
+    if request.form.get("user_type") == "seller":
+        return redirect(url_for("main.seller_home"))
+    return redirect(url_for("main.buyer_home"))
+
+
+@bp.route("/buyer_home")
+def buyer_home():
+    sort = request.args.get("sort")
+    verified = request.args.get("verified") == "1"
+    stamps = db.session.scalars(
+        svc.search_listings(sort=sort, verified_only=verified).limit(60)
+    ).all()
+    recent = db.session.scalars(svc.search_listings().limit(5)).all()
+    return render_template(
+        "buyer_home.html",
+        stamps=stamps,
+        recent=recent,
+        wishlist_ids=_wishlist_ids(),
+        sort=sort,
+        verified=verified,
+    )
+
+
+@bp.route("/search")
+def search():
+    query = request.args.get("search", "").strip()
+    if not query:
+        return redirect(url_for("main.buyer_home"))
+    stamps = db.session.scalars(svc.search_listings(query=query).limit(30)).all()
+    message = None if stamps else "No stamps found matching your search."
+    return render_template(
+        "search.html", stamps=stamps, query=query, message=message, wishlist_ids=_wishlist_ids()
+    )
+
+
+@bp.route("/stamp/<int:listing_id>")
+def stamp_detail(listing_id):
+    listing = _visible_listing(listing_id)
+    return render_template("stamp_detail.html", stamp=listing, wishlist_ids=_wishlist_ids())
+
+
+@bp.route("/purchase/<int:stamp_id>", methods=["GET", "POST"])
+@collector_required
+def purchase(stamp_id):
+    stamp = _visible_listing(stamp_id)
+    if request.method == "POST":
+        contact = {
+            "name": request.form.get("name"),
+            "email": request.form.get("email"),
+            "phone": request.form.get("phone"),
+        }
+        try:
+            order = svc.place_order(
+                current_user,
+                stamp.id,
+                request.form.get("quantity", 1),
+                request.form.get("address"),
+                contact,
+            )
+        except DomainError as exc:
+            flash(exc.message, "error")
+            return render_template("purchase.html", stamp=stamp, form=request.form), (
+                exc.status_code
+            )
+        flash(f"Purchase completed! Order #{order.id}, total ₹{order.total}.", "success")
+        return redirect(url_for("main.orders"))
+    form = {"name": current_user.full_name or current_user.username, "email": current_user.email}
+    return render_template("purchase.html", stamp=stamp, form=form)
+
+
+@bp.route("/orders")
+@collector_required
 def orders():
     bought = db.session.scalars(
         select(Order).where(Order.buyer_id == current_user.id).order_by(Order.created_at.desc())
@@ -208,23 +248,21 @@ def orders():
     return render_template("orders.html", bought=bought, sold=sold)
 
 
-# ---------- wishlist ----------
-
-
-@bp.route("/me/wishlist")
-@login_required
+@bp.route("/wishlist")
+@collector_required
 def wishlist():
     items = db.session.scalars(
         select(WishlistItem)
         .where(WishlistItem.user_id == current_user.id)
         .order_by(WishlistItem.created_at.desc())
     ).all()
-    return render_template("wishlist.html", items=items)
+    return render_template("wishlist.html", wishlist=[item.listing for item in items])
 
 
-@bp.post("/listings/<int:listing_id>/wishlist")
-@login_required
+@bp.post("/wishlist/<int:listing_id>")
+@collector_required
 def wishlist_toggle(listing_id):
+    """Called by the ❤️ button (fetch, JSON response) or a plain form post (redirect)."""
     listing = db.get_or_404(Listing, listing_id)
     item = db.session.scalar(
         select(WishlistItem).where(
@@ -233,40 +271,123 @@ def wishlist_toggle(listing_id):
     )
     if item:
         db.session.delete(item)
-        flash("Removed from wishlist.", "info")
+        liked = False
     elif listing.status == LISTING_ACTIVE:
         db.session.add(WishlistItem(user_id=current_user.id, listing_id=listing.id))
-        flash("Added to wishlist.", "success")
+        liked = True
+    else:
+        liked = False
     db.session.commit()
-    return redirect(request.referrer or url_for("main.listing_detail", listing_id=listing.id))
+    if request.accept_mimetypes.best == "application/json":
+        return jsonify({"liked": liked})
+    flash("Added to wishlist." if liked else "Removed from wishlist.", "success")
+    return redirect(request.referrer or url_for("main.stamp_detail", listing_id=listing.id))
 
 
-# ---------- official issues and events ----------
+# ---------- seller pages ----------
 
 
-@bp.route("/issues")
-def issues():
-    rows = db.session.scalars(select(Issue).order_by(Issue.issue_date.desc())).all()
-    return render_template("issues.html", issues=rows)
+def _listing_form_data(form) -> dict:
+    """Map the original seller.html field names onto the service's names."""
+    mapping = {
+        "stamp_name": "title",
+        "year_of_manufacture": "year",
+        "coated_price": "price",
+        "description": "description",
+        "quantity": "quantity",
+        "issue_id": "issue_id",
+    }
+    return {new: form[old] for old, new in mapping.items() if old in form}
 
 
-@bp.post("/issues/<int:issue_id>/prebook")
-@login_required
-def prebook(issue_id):
+def _issue_choices():
+    return db.session.scalars(select(Issue).order_by(Issue.issue_date.desc())).all()
+
+
+@bp.route("/seller_home")
+@collector_required
+def seller_home():
+    listings = db.session.scalars(
+        select(Listing)
+        .where(Listing.seller_id == current_user.id, Listing.status != LISTING_REMOVED)
+        .order_by(Listing.created_at.desc())
+    ).all()
+    sold_count = db.session.scalar(
+        select(func.coalesce(func.sum(Order.quantity), 0))
+        .join(Listing)
+        .where(Listing.seller_id == current_user.id)
+    )
+    return render_template("seller_home.html", listings=listings, sold_count=sold_count)
+
+
+@bp.route("/sell_stamp")
+@collector_required
+def sell_stamp():
+    return render_template("seller.html", form={}, issues=_issue_choices(), stamp=None)
+
+
+@bp.post("/submit_stamp")
+@collector_required
+def submit_stamp():
     try:
-        booking = svc.prebook_issue(current_user, issue_id, request.form.get("quantity", 1))
-        flash(f"Pre-booked {booking.quantity} of '{booking.issue.title}'.", "success")
+        listing = svc.create_listing(
+            current_user, _listing_form_data(request.form), request.files.get("stamp_photo")
+        )
     except DomainError as exc:
-        _flash_error(exc)
-    return redirect(url_for("main.issues"))
+        flash(exc.message, "error")
+        return render_template(
+            "seller.html", form=request.form, issues=_issue_choices(), stamp=None
+        ), exc.status_code
+    flash("Stamp uploaded successfully! Verification checks have run.", "success")
+    return redirect(url_for("main.stamp_detail", listing_id=listing.id))
 
 
-@bp.route("/events")
-def events():
-    upcoming = db.session.scalars(
-        select(Event).where(Event.date >= date.today()).order_by(Event.date)
-    ).all()
-    past = db.session.scalars(
-        select(Event).where(Event.date < date.today()).order_by(Event.date.desc()).limit(10)
-    ).all()
-    return render_template("events.html", upcoming=upcoming, past=past)
+@bp.route("/stamp/<int:listing_id>/edit", methods=["GET", "POST"])
+@collector_required
+def edit_stamp(listing_id):
+    listing = db.get_or_404(Listing, listing_id)
+    if listing.seller_id != current_user.id:
+        abort(403)
+    if request.method == "POST":
+        try:
+            svc.update_listing(listing, current_user, _listing_form_data(request.form))
+        except DomainError as exc:
+            flash(exc.message, "error")
+            return render_template(
+                "seller.html", form=request.form, issues=_issue_choices(), stamp=listing
+            ), exc.status_code
+        flash("Stamp updated and re-verified.", "success")
+        return redirect(url_for("main.stamp_detail", listing_id=listing.id))
+    form = {
+        "stamp_name": listing.title,
+        "year_of_manufacture": listing.year,
+        "coated_price": listing.price,
+        "quantity": listing.quantity,
+        "description": listing.description,
+        "issue_id": listing.issue_id or "",
+    }
+    return render_template("seller.html", form=form, issues=_issue_choices(), stamp=listing)
+
+
+@bp.post("/stamp/<int:listing_id>/delete")
+@collector_required
+def delete_stamp(listing_id):
+    listing = db.get_or_404(Listing, listing_id)
+    try:
+        svc.remove_listing(listing, current_user)
+        flash("Stamp removed from sale.", "success")
+    except DomainError as exc:
+        flash(exc.message, "error")
+    return redirect(url_for("main.seller_home"))
+
+
+@bp.post("/stamp/<int:listing_id>/verify")
+@collector_required
+def verify_stamp(listing_id):
+    listing = db.get_or_404(Listing, listing_id)
+    try:
+        svc.reverify_listing(listing, current_user)
+        flash("Verification re-run.", "success")
+    except DomainError as exc:
+        flash(exc.message, "error")
+    return redirect(url_for("main.stamp_detail", listing_id=listing_id))

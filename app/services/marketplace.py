@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
@@ -17,6 +18,7 @@ from ..models import (
     Order,
     Prebooking,
     User,
+    VerificationReport,
 )
 from ..verification import verify_listing
 from .errors import Forbidden, OutOfStock, ValidationError
@@ -145,10 +147,9 @@ def search_listings(
     min_price: Decimal | None = None,
     max_price: Decimal | None = None,
     verified_only: bool = False,
+    sort: str | None = None,
 ):
-    """Build a SELECT for active listings matching the filters (newest first)."""
-    from ..models import VerificationReport
-
+    """Build a SELECT for active listings matching the filters (newest first by default)."""
     stmt = select(Listing).where(Listing.status == LISTING_ACTIVE)
     if query:
         pattern = f"%{query}%"
@@ -161,7 +162,17 @@ def search_listings(
         stmt = stmt.where(Listing.price <= max_price)
     if verified_only:
         stmt = stmt.join(VerificationReport).where(VerificationReport.status == "verified")
-    return stmt.order_by(Listing.created_at.desc(), Listing.id.desc())
+    order = SORTS.get(sort or "", ())
+    return stmt.order_by(*order, Listing.created_at.desc(), Listing.id.desc())
+
+
+# The four options in the marketplace's "Filter" dropdown.
+SORTS = {
+    "price_asc": (Listing.price.asc(),),
+    "price_desc": (Listing.price.desc(),),
+    "year_asc": (Listing.year.asc(),),
+    "year_desc": (Listing.year.desc(),),
+}
 
 
 def _require_owner(listing: Listing, user: User) -> None:
@@ -172,15 +183,31 @@ def _require_owner(listing: Listing, user: User) -> None:
 # ---------- orders ----------
 
 
-def place_order(buyer: User, listing_id: int, quantity, shipping_address) -> Order:
+PHONE_RE = re.compile(r"^\+?[0-9][0-9 -]{6,18}[0-9]$")
+
+
+def place_order(
+    buyer: User, listing_id: int, quantity, shipping_address, contact: dict | None = None
+) -> Order:
     """Buy stock from a listing.
 
     Stock is decremented with a single conditional UPDATE (`... WHERE quantity >= :qty`), so two
     buyers racing for the last stamp cannot both succeed: the database applies the updates one at
     a time and the second one matches zero rows.
+
+    `contact` holds the name, email and phone the buyer typed on the purchase form. When it is
+    missing (e.g. API calls) the buyer's account details are used.
     """
     quantity = parse_int(quantity, "Quantity", minimum=1, maximum=10_000)
     address = parse_text(shipping_address, "Shipping address", max_length=500)
+    contact = contact or {}
+    name = parse_text(
+        contact.get("name") or buyer.full_name or buyer.username, "Name", max_length=120
+    )
+    email = parse_text(contact.get("email") or buyer.email, "Email", max_length=255)
+    phone = (contact.get("phone") or "").strip()
+    if phone and not PHONE_RE.match(phone):
+        raise ValidationError("Enter a valid phone number.")
 
     listing = db.session.get(Listing, listing_id)
     if listing is None or listing.status == LISTING_REMOVED:
@@ -213,6 +240,9 @@ def place_order(buyer: User, listing_id: int, quantity, shipping_address) -> Ord
         unit_price=listing.price,
         total=listing.price * quantity,
         shipping_address=address,
+        contact_name=name,
+        contact_email=email,
+        contact_phone=phone,
     )
     db.session.add(order)
     db.session.commit()
@@ -249,10 +279,7 @@ def prebook_issue(user: User, issue_id: int, quantity) -> Prebooking:
 def create_issue(circle: User, data, image) -> Issue:
     if not circle.is_circle:
         raise Forbidden("Only postal circle accounts can publish issues.")
-    try:
-        issue_date = date.fromisoformat(str(data.get("issue_date", "")).strip())
-    except ValueError as exc:
-        raise ValidationError("Issue date must be a date (YYYY-MM-DD).") from exc
+    issue_date = _parse_date(data.get("issue_date"), "Issue date")
 
     issue = Issue(
         circle=circle,
@@ -268,6 +295,36 @@ def create_issue(circle: User, data, image) -> Issue:
     )
     issue.reference_image, issue.reference_hash = save_image(image)
     db.session.add(issue)
+    db.session.commit()
+    return issue
+
+
+def _parse_date(value, field: str) -> date:
+    try:
+        return date.fromisoformat(str(value or "").strip())
+    except ValueError as exc:
+        raise ValidationError(f"{field} must be a date (YYYY-MM-DD).") from exc
+
+
+def update_issue(issue: Issue, user: User, data) -> Issue:
+    """Partial update: blank fields keep their current value (as on the Manage Stamps form)."""
+    if issue.circle_id != user.id:
+        raise Forbidden("You can only change your own circle's issues.")
+    if (data.get("title") or "").strip():
+        issue.title = parse_text(data.get("title"), "Title", max_length=150)
+    if (data.get("issue_date") or "").strip():
+        issue.issue_date = _parse_date(data.get("issue_date"), "Issue date")
+    if str(data.get("denomination") or "").strip():
+        issue.denomination = parse_price(data.get("denomination"), "Denomination")
+    db.session.commit()
+    return issue
+
+
+def set_issue_stock(issue: Issue, user: User, quantity) -> Issue:
+    """Set how many copies of an issue are left for pre-booking."""
+    if issue.circle_id != user.id:
+        raise Forbidden("You can only change your own circle's issues.")
+    issue.prebook_available = parse_int(quantity, "Quantity", minimum=0, maximum=1_000_000)
     db.session.commit()
     return issue
 

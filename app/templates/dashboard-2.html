@@ -1,0 +1,80 @@
+{% from "_flash.html" import plain, csrf %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Postal Circle Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles_for_dash2.css') }}">
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <div class="logo-section">
+                <img src="{{ url_for('static', filename='India-Post_Preview.png') }}" alt="India Post Logo" class="logo">
+                <h1>Postal Circle Dashboard</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('circle.dashboard') }}" class="active">Dashboard</a></li>
+                <li><a href="{{ url_for('circle.manage_stamps') }}">Manage Stamps</a></li>
+                <li><a href="{{ url_for('circle.events') }}">Events</a></li>
+                <li><a href="{{ url_for('circle.settings') }}">Settings</a></li>
+                <li><a href="#">Help & Support</a></li>
+            </ul>
+            <form action="{{ url_for('auth.logout') }}" method="post">
+                {{ csrf() }}
+                <button type="submit" class="logout-button">Logout</button>
+            </form>
+        </aside>
+
+        <div class="main-content">
+            <header class="dashboard-header">
+                <h2>Welcome to Your Dashboard</h2>
+            </header>
+
+            {{ plain() }}
+
+            <section class="post-update-section">
+                <h3>Post New Updates</h3>
+                <form id="updateForm" method="POST" action="{{ url_for('circle.post_update') }}">
+                    {{ csrf() }}
+                    <label for="updateType">Select Update Type</label>
+                    <select id="updateType" name="updateType" required>
+                        {% for value, label in kinds.items() %}<option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <label for="updateTitle">Title</label>
+                    <input type="text" id="updateTitle" name="updateTitle" placeholder="Enter title" maxlength="150" required>
+
+                    <label for="updateContent">Content</label>
+                    <textarea id="updateContent" name="updateContent" rows="5" placeholder="Enter content" required></textarea>
+
+                    <button type="submit" class="submit-button">Post Update</button>
+                </form>
+            </section>
+
+            <section class="stock-update-section">
+                <h3>Update Stamp Store Stock</h3>
+                <form id="stockForm" method="POST" action="{{ url_for('circle.update_stock') }}">
+                    {{ csrf() }}
+                    <label for="item">Item</label>
+                    <select id="item" name="item" required>
+                        {% for issue in issues %}<option value="{{ issue.id }}" data-stock="{{ issue.prebook_available }}">{{ issue.title }} ({{ issue.issue_date.year }})</option>
+                        {% else %}<option value="" disabled selected>Add a stamp under Manage Stamps first</option>
+                        {% endfor %}
+                    </select>
+
+                    <label for="quantity">Quantity</label>
+                    <input type="number" id="quantity" name="quantity" placeholder="Enter quantity" min="0" required>
+
+                    <button type="submit" class="submit-button">Update Stock</button>
+                </form>
+            </section>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script_for_dash2.js') }}"></script>
+</body>
+</html>

@@ -65,8 +65,14 @@ def png(seed=1, label="Stamp", value="Rs 5", size=None):
     return buffer
 
 
-def login(client, username, password=PASSWORD):
-    return client.post("/auth/login", data={"username": username, "password": password})
+def login(client, username, password=PASSWORD, circle=None):
+    """Log in through the original Login.html forms (one per account type)."""
+    if circle:
+        return client.post(
+            "/login_postalcircles",
+            data={"username": username, "password": password, "postal_circle": circle},
+        )
+    return client.post("/login_philatelists", data={"username": username, "password": password})
 
 
 def token_for(client, username):

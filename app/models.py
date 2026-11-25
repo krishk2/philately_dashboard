@@ -64,6 +64,9 @@ class User(UserMixin, TimestampMixin, db.Model):
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(16), default=ROLE_COLLECTOR)
     postal_circle: Mapped[str | None] = mapped_column(String(64))
+    full_name: Mapped[str | None] = mapped_column(String(120))
+    membership: Mapped[str] = mapped_column(String(16), default="Basic", server_default="Basic")
+    avatar_filename: Mapped[str | None] = mapped_column(String(255))
 
     listings: Mapped[list[Listing]] = relationship(back_populates="seller")
     orders: Mapped[list[Order]] = relationship(back_populates="buyer")
@@ -199,6 +202,9 @@ class Order(TimestampMixin, db.Model):
     unit_price: Mapped[Decimal] = mapped_column(Numeric(10, 2))
     total: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     shipping_address: Mapped[str] = mapped_column(Text)
+    contact_name: Mapped[str] = mapped_column(String(120), default="", server_default="")
+    contact_email: Mapped[str] = mapped_column(String(255), default="", server_default="")
+    contact_phone: Mapped[str] = mapped_column(String(20), default="", server_default="")
 
     buyer: Mapped[User] = relationship(back_populates="orders")
     listing: Mapped[Listing] = relationship()
@@ -238,6 +244,33 @@ class Event(TimestampMixin, db.Model):
             "description": self.description,
             "postal_circle": self.circle.postal_circle,
         }
+
+
+UPDATE_KINDS = {
+    "newRelease": "New Stamp Release",
+    "cancellation": "Cancellation",
+    "fdc": "FDC",
+    "souvenir": "Souvenir Sheet",
+    "event": "Event",
+}
+
+
+class CircleUpdate(TimestampMixin, db.Model):
+    """A news post from a postal circle, shown in the home page's news tab."""
+
+    __tablename__ = "circle_updates"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    circle_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(16))
+    title: Mapped[str] = mapped_column(String(150))
+    content: Mapped[str] = mapped_column(Text)
+
+    circle: Mapped[User] = relationship()
+
+    @property
+    def kind_label(self) -> str:
+        return UPDATE_KINDS.get(self.kind, self.kind)
 
 
 class WishlistItem(TimestampMixin, db.Model):

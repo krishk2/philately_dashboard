@@ -40,10 +40,12 @@ def create_app(config_name: str | None = None) -> Flask:
     from .api import bp as api_bp
     from .auth import bp as auth_bp
     from .circle import bp as circle_bp
+    from .member import bp as member_bp
     from .web import bp as web_bp
 
     app.register_blueprint(web_bp)
     app.register_blueprint(auth_bp)
+    app.register_blueprint(member_bp)
     app.register_blueprint(circle_bp)
     app.register_blueprint(api_bp)
 

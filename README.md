@@ -1,12 +1,16 @@
-# Philately Hub
+# National Philatelic Community
 
-A marketplace and community platform for stamp collectors and India's postal circles, built with
-Flask, SQLAlchemy and PostgreSQL. Every listing is automatically checked: photos are compared
-against other sellers' listings and the postal circle's official reference image.
+A marketplace and community platform for stamp collectors (philatelists) and India's postal
+circles, built with Flask, SQLAlchemy and PostgreSQL. Every listing is automatically checked:
+photos are compared against other sellers' listings and the postal circle's official reference
+image.
 
-- **Collectors** list stamps for sale, buy, keep a wishlist and pre-book new official issues.
-- **Postal circles** publish official issues (with a reference image and pre-booking stock) and
-  run events such as stamp melas.
+- **Philatelists** buy and sell stamps in the Stamp Mela, keep a wishlist, pre-book new official
+  issues in the Stamp Store and track everything in My Collection.
+- **Postal circles** publish official issues (with a reference image and pre-booking stock), set
+  stock, post news updates and run events such as stamp melas.
+- **Home page** shows upcoming releases, events and news from the circles, plus a help chatbot
+  (Gemini when configured, a canned reply otherwise).
 - **Listing verification** flags copied photos and claims that don't match the official issue.
 - **REST API** (`/api/v1`) with bearer tokens, pagination, filters and consistent JSON errors.
 
@@ -14,7 +18,7 @@ against other sellers' listings and the postal circle's official reference image
 
 ```mermaid
 flowchart LR
-  Browser -->|HTML forms + CSRF| Web[web / auth / circle blueprints]
+  Browser -->|HTML forms + CSRF| Web[web / auth / member / circle blueprints]
   Client[API client] -->|Bearer token, JSON| API[api blueprint /api/v1]
   Web --> Services
   API --> Services
@@ -36,8 +40,13 @@ app/
   __init__.py        app factory, error handlers
   config.py          config from environment variables (no secrets in code)
   models.py          SQLAlchemy 2.0 models with DB-level check constraints
-  auth.py web.py circle.py api.py   blueprints (routes only)
-  services/          business logic: marketplace, accounts, uploads, domain errors
+  auth.py            login / register (separate philatelist and postal circle forms)
+  web.py             home, Stamp Store, Stamp Mela marketplace, selling, buying, wishlist
+  member.py          philatelist dashboard, profile, My Collection, settings
+  circle.py          postal circle dashboard, Manage Stamps, events, settings
+  api.py             JSON REST API
+  services/          business logic: marketplace, accounts, uploads, chatbot, domain errors
+  templates/ static/ the original v1 pages and styles, wired to the new backend
   verification/      imagehash (dHash from scratch), vision client, check runner
   cli.py             `flask seed` demo data
 migrations/          Alembic migrations (Flask-Migrate)
@@ -92,7 +101,8 @@ docker compose up --build
 docker compose exec web flask seed   # optional demo data
 ```
 
-Open http://localhost:8000.
+Open http://localhost:8000 for the login page, or http://localhost:8000/home for the community
+home page.
 
 ### Local (SQLite)
 
@@ -104,9 +114,10 @@ uv run flask --app wsgi seed
 uv run flask --app wsgi run --debug
 ```
 
-The seed creates `ap_circle` (postal circle) and the collectors `alice` and `bob`, all with the
-password `demo-password`. It also creates listings that show each verification outcome: verified,
-a mismatched official issue, and a copied photo.
+The seed creates the philatelists `alice` and `bob` and the postal circle `ap_circle` (log in with
+the Postal Circle tab and pick "Andhra Pradesh"), all with the password `demo-password`. It also
+creates listings that show each verification outcome: verified, a mismatched official issue, and
+a copied photo.
 
 ### Tests and lint
 
@@ -157,5 +168,10 @@ Errors always look like `{"error": {"code": "out_of_stock", "message": "..."}}`.
 ## History
 
 Version 1 (2024) was a college project: a Flask prototype with hard-coded database credentials,
-plaintext passwords and two separate apps merged together. Version 2 is a rewrite of that
-project.
+plaintext passwords and two separate apps merged together. Many of its forms were front-end only
+(alerts or localStorage), and some pages crashed.
+
+Version 2 keeps the v1 pages and styles and replaces everything behind them. Every form now saves
+to the database: posting circle updates, stock, issues, events, profiles, settings, purchases,
+pre-bookings and the wishlist. The search page, the Filter menu and the ❤️ button now work.
+Verification badges and reports are styled to match the existing pages.

@@ -1,0 +1,119 @@
+{% from "_flash.html" import bootstrap, badge %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Stamp Details</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom CSS for stamp details -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            padding-top: 20px;
+        }
+
+        /* Hide the navbar */
+        .navbar {
+            display: none;
+        }
+
+        .stamp-container {
+            margin: 20px auto;
+            max-width: 900px;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .stamp-image {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .stamp-image img {
+            width: 100%;
+            max-width: 500px;
+            height: auto;
+            object-fit: contain;
+            border-radius: 5px;
+        }
+
+        .stamp-details h2 {
+            margin-bottom: 20px;
+        }
+
+        .stamp-details p {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .stamp-details .price {
+            font-weight: bold;
+            font-size: 20px;
+            color: green;
+        }
+
+        .btn-container {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .btn-container .btn {
+            margin: 5px;
+            padding: 15px 30px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container" style="max-width: 900px">
+        <!-- Stamp Details Section -->
+        <h1>Search Results</h1>
+        <p>Results for “{{ query }}” · <a href="{{ url_for('main.buyer_home') }}">Back to Stamp Collection</a></p>
+        {{ bootstrap() }}
+
+        {% if message %}
+        <p>{{ message }}</p>
+        {% else %}
+        <ul>
+            {% for stamp in stamps %}
+            <li><a href="#stamp-{{ stamp.id }}">{{ stamp.title }}</a></li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+
+    {% for stamp in stamps %}
+    <div class="stamp-container" id="stamp-{{ stamp.id }}">
+        <div class="stamp-image">
+            <img src="{{ url_for('main.uploaded_file', filename=stamp.image_filename) }}" alt="{{ stamp.title }}">
+        </div>
+        <div class="stamp-details">
+            <h2><a href="{{ url_for('main.stamp_detail', listing_id=stamp.id) }}" class="text-dark text-decoration-none">{{ stamp.title }}</a> {{ badge(stamp.verification) }}</h2>
+            <p><strong>Year of Manufacture:</strong> {{ stamp.year }}</p>
+            <p><strong>Description:</strong> {{ stamp.description }}</p>
+            <p class="price"><strong>Price:</strong> ₹{{ stamp.price }}</p>
+        </div>
+
+        <!-- Like and Purchase buttons -->
+        <div class="btn-container">
+            <button class="btn btn-danger" onclick="likeStamp('{{ stamp.id }}', this)">{{ '❤️ Remove from Wishlist' if stamp.id in wishlist_ids else '🤍 Add to Wishlist' }}</button>
+            <a class="btn btn-primary" href="{{ url_for('main.purchase', stamp_id=stamp.id) }}">Purchase Now</a>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='script_for_wishlist.js') }}"></script>
+
+</body>
+
+</html>

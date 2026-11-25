@@ -16,7 +16,7 @@ from sqlalchemy import select
 from werkzeug.datastructures import FileStorage
 
 from .extensions import db
-from .models import ROLE_CIRCLE, ROLE_COLLECTOR, Event, User
+from .models import ROLE_CIRCLE, ROLE_COLLECTOR, CircleUpdate, Event, User
 from .services import marketplace as svc
 
 DEMO_PASSWORD = "demo-password"
@@ -109,8 +109,23 @@ def register_cli(app: Flask) -> None:
                     location="Tirupati HPO",
                     description="Intro to collecting for students.",
                 ),
+                CircleUpdate(
+                    circle=circle,
+                    kind="newRelease",
+                    title="Lepakshi Temple commemorative stamp released",
+                    content="Available at all head post offices in the circle and for "
+                    "pre-booking in the Stamp Store.",
+                ),
+                CircleUpdate(
+                    circle=circle,
+                    kind="cancellation",
+                    title="Special cancellation for Araku Coffee day",
+                    content="A pictorial cancellation will be used at Araku Valley SO.",
+                ),
             ]
         )
+        alice.full_name = "Alice Rao"
+        bob.full_name = "Bob Kumar"
         db.session.commit()
 
         # 1. Matches its official issue exactly -> verified

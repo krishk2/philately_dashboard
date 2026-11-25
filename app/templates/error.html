@@ -1,9 +1,54 @@
-{% extends "base.html" %}
-{% block title %}{{ error.code }}{% endblock %}
-{% block content %}
-<section class="panel narrow">
-  <h1>{{ error.code }} · {{ error.name }}</h1>
-  <p>{{ error.description }}</p>
-  <a class="btn" href="{{ url_for('main.index') }}">Back to home</a>
-</section>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ error.code }} {{ error.name }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+
+        .container {
+            text-align: center;
+            background-color: #fff;
+            padding: 50px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            max-width: 560px;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 15px 30px;
+            margin: 10px;
+            font-size: 18px;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>{{ error.code }} - {{ error.name }}</h1>
+        <p>{{ error.description }}</p>
+        <a class="btn" href="{{ url_for('main.home') }}">Back to Home</a>
+    </div>
+</body>
+
+</html>

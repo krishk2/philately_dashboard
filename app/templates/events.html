@@ -1,19 +1,99 @@
-{% extends "base.html" %}
-{% block title %}Events{% endblock %}
-{% block content %}
-<h1>Events</h1>
-<h2>Upcoming</h2>
-{% for e in upcoming %}
-  <div class="row-item">
-    <strong>{{ e.name }}</strong>
-    <span class="muted">{{ e.date.strftime('%a %d %b %Y') }} · {{ e.location }} · {{ e.circle.postal_circle }} circle</span>
-    {% if e.description %}<span>{{ e.description }}</span>{% endif %}
-  </div>
-{% else %}<p class="muted">No upcoming events.</p>{% endfor %}
-{% if past %}
-<h2>Past</h2>
-{% for e in past %}
-  <div class="row-item past"><strong>{{ e.name }}</strong><span class="muted">{{ e.date.strftime('%d %b %Y') }} · {{ e.location }}</span></div>
-{% endfor %}
-{% endif %}
-{% endblock %}
+{% from "_flash.html" import plain, csrf %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Events</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles_for_events.css') }}">
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <div class="logo-section">
+                <img src="{{ url_for('static', filename='India-Post_Preview.png') }}" alt="India Post Logo" class="logo">
+                <h1>Postal Circle Dashboard</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('circle.dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('circle.manage_stamps') }}">Manage Stamps</a></li>
+                <li><a href="{{ url_for('circle.events') }}" class="active">Events</a></li>
+                <li><a href="{{ url_for('circle.settings') }}">Settings</a></li>
+                <li><a href="#">Help & Support</a></li>
+            </ul>
+            <form action="{{ url_for('auth.logout') }}" method="post">
+                {{ csrf() }}
+                <button type="submit" class="logout-button">Logout</button>
+            </form>
+        </aside>
+
+        <div class="main-content">
+            <header class="dashboard-header">
+                <h2>Events</h2>
+            </header>
+
+            {{ plain() }}
+
+            <section class="events-section">
+                <h3>Add New Event</h3>
+                <!-- Form action updated to '/add_event' route -->
+                <form id="addEventForm" action="{{ url_for('circle.add_event') }}" method="POST">
+                    {{ csrf() }}
+                    <label for="eventName">Event Name</label>
+                    <input type="text" id="eventName" name="eventName" placeholder="Enter event name" maxlength="150" required>
+
+                    <label for="eventDate">Event Date</label>
+                    <input type="date" id="eventDate" name="eventDate" required>
+
+                    <label for="eventLocation">Location</label>
+                    <input type="text" id="eventLocation" name="eventLocation" placeholder="Enter event location" maxlength="200" required>
+
+                    <label for="eventDescription">Description</label>
+                    <textarea id="eventDescription" name="eventDescription" placeholder="Enter event description" rows="4" required></textarea>
+
+                    <button type="submit" class="submit-button">Add Event</button>
+                </form>
+
+                <h3>Update or Delete Existing Events</h3>
+
+<!-- Form for updating an event -->
+<form id="updateEventForm" action="{{ url_for('circle.update_event') }}" method="POST">
+    {{ csrf() }}
+    <label for="existingEvents">Select Event</label>
+    <select id="existingEvents" name="existingEvents" data-source="{{ url_for('circle.get_events') }}" required>
+        <!-- Options are populated by script_for_events.js -->
+        {% for e in events %}<option value="{{ e.id }}">{{ e.name }} ({{ e.date.isoformat() }})</option>{% endfor %}
+    </select>
+
+    <label for="updateEventName">Event Name</label>
+    <input type="text" id="updateEventName" name="updateEventName" placeholder="Enter new name">
+
+    <label for="updateEventDate">Event Date</label>
+    <input type="date" id="updateEventDate" name="updateEventDate">
+
+    <label for="updateEventLocation">Location</label>
+    <input type="text" id="updateEventLocation" name="updateEventLocation" placeholder="Enter new location">
+
+    <label for="updateEventDescription">Description</label>
+    <textarea id="updateEventDescription" name="updateEventDescription" placeholder="Enter new description" rows="4"></textarea>
+
+    <button type="submit" class="submit-button">Update Event</button>
+</form>
+
+<!-- Separate form for deleting an event -->
+<form id="deleteEventForm" action="{{ url_for('circle.delete_event') }}" method="POST">
+    {{ csrf() }}
+    <input type="hidden" id="deleteEventId" name="eventId" value="">
+    <button type="submit" class="submit-button" style="background-color: #dc3545;">Delete Event</button>
+</form>
+
+
+            </section>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script_for_events.js') }}"></script>
+
+</body>
+</html>
