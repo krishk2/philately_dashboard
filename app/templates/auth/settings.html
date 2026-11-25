@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<section class="panel narrow">
+  <h1>Account</h1>
+  <p class="muted">{{ current_user.username }} · {{ current_user.email }} · {{ 'Postal circle: ' ~ current_user.postal_circle if current_user.is_circle else 'Collector' }}</p>
+  <h2>Change password</h2>
+  <form method="post">
+    {{ csrf() }}
+    <label>Current password <input type="password" name="current_password" required autocomplete="current-password"></label>
+    <label>New password <input type="password" name="new_password" required minlength="8" autocomplete="new-password"></label>
+    <label>Confirm new password <input type="password" name="confirm_password" required minlength="8" autocomplete="new-password"></label>
+    <button class="btn">Update password</button>
+  </form>
+  <p class="muted small">Changing your password also revokes any API tokens you have issued.</p>
+</section>
+{% endblock %}

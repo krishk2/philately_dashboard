@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Events{% endblock %}
+{% block content %}
+<h1>Events</h1>
+<h2>Upcoming</h2>
+{% for e in upcoming %}
+  <div class="row-item">
+    <strong>{{ e.name }}</strong>
+    <span class="muted">{{ e.date.strftime('%a %d %b %Y') }} · {{ e.location }} · {{ e.circle.postal_circle }} circle</span>
+    {% if e.description %}<span>{{ e.description }}</span>{% endif %}
+  </div>
+{% else %}<p class="muted">No upcoming events.</p>{% endfor %}
+{% if past %}
+<h2>Past</h2>
+{% for e in past %}
+  <div class="row-item past"><strong>{{ e.name }}</strong><span class="muted">{{ e.date.strftime('%d %b %Y') }} · {{ e.location }}</span></div>
+{% endfor %}
+{% endif %}
+{% endblock %}

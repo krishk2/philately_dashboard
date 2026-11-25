@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Orders{% endblock %}
+{% block content %}
+<h1>Orders</h1>
+{% for heading, rows, who in [('Bought', bought, 'seller'), ('Sold', sold, 'buyer')] %}
+<section>
+  <h2>{{ heading }}</h2>
+  {% if rows %}
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>#</th><th>Stamp</th><th>{{ who|capitalize }}</th><th>Qty</th><th>Total</th><th>Date</th></tr></thead>
+    <tbody>
+    {% for o in rows %}
+      <tr>
+        <td>{{ o.id }}</td>
+        <td><a href="{{ url_for('main.listing_detail', listing_id=o.listing_id) }}">{{ o.listing.title }}</a></td>
+        <td>{{ o.listing.seller.username if who == 'seller' else o.buyer.username }}</td>
+        <td>{{ o.quantity }}</td><td>₹{{ o.total }}</td><td>{{ o.created_at.strftime('%d %b %Y') }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}<p class="muted">Nothing here yet.</p>{% endif %}
+</section>
+{% endfor %}
+{% endblock %}

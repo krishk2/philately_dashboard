@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% from "_macros.html" import listing_card %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>Buy, sell and pre-book stamps, with every listing checked.</h1>
+  <p>Every listing is checked for reused photos and compared with the postal circle's official issue before buyers see it.</p>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('main.listings') }}">Browse the marketplace</a>
+    <a class="btn ghost" href="{{ url_for('main.issues') }}">See new issues</a>
+  </div>
+</section>
+
+<section>
+  <h2>Latest listings</h2>
+  {% if latest %}
+    <div class="grid">{% for l in latest %}{{ listing_card(l) }}{% endfor %}</div>
+  {% else %}
+    <p class="muted">No listings yet.</p>
+  {% endif %}
+</section>
+
+<div class="two-col">
+  <section>
+    <h2>New official issues</h2>
+    {% for issue in issues %}
+      <div class="row-item">
+        <strong>{{ issue.title }}</strong>
+        <span class="muted">{{ issue.issue_date.strftime('%d %b %Y') }} · ₹{{ issue.denomination }} · {{ issue.circle.postal_circle }}</span>
+      </div>
+    {% else %}<p class="muted">No issues published yet.</p>{% endfor %}
+  </section>
+  <section>
+    <h2>Upcoming events</h2>
+    {% for event in events %}
+      <div class="row-item">
+        <strong>{{ event.name }}</strong>
+        <span class="muted">{{ event.date.strftime('%d %b %Y') }} · {{ event.location }}</span>
+      </div>
+    {% else %}<p class="muted">No upcoming events.</p>{% endfor %}
+  </section>
+</div>
+{% endblock %}

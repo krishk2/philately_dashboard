@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}New issues{% endblock %}
+{% block content %}
+<h1>Official issues</h1>
+<p class="muted">Published by postal circles. Sellers can link a listing to an issue, and the listing is then checked against the image below.</p>
+<div class="grid">
+{% for issue in issues %}
+  <div class="card static">
+    <img src="{{ url_for('main.uploaded_file', filename=issue.reference_image) }}" alt="{{ issue.title }}" loading="lazy">
+    <div class="card-body">
+      <h3>{{ issue.title }}</h3>
+      <p class="muted">{{ issue.circle.postal_circle }} · {{ issue.issue_date.strftime('%d %b %Y') }} · ₹{{ issue.denomination }}</p>
+      {% if issue.description %}<p class="small">{{ issue.description }}</p>{% endif %}
+      <p class="small">{{ issue.prebook_available }} copies left to pre-book</p>
+      {% if current_user.is_authenticated and not current_user.is_circle and issue.prebook_available > 0 %}
+        <form method="post" action="{{ url_for('main.prebook', issue_id=issue.id) }}" class="row">
+          {{ csrf() }}
+          <input type="number" name="quantity" value="1" min="1" max="{{ [issue.prebook_available, 100]|min }}" aria-label="Quantity">
+          <button class="btn small">Pre-book</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+{% else %}
+  <p class="muted">No issues published yet.</p>
+{% endfor %}
+</div>
+{% endblock %}
