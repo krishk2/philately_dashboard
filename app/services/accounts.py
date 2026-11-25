@@ -126,7 +126,8 @@ def change_email(user: User, email: str) -> None:
 
 
 def update_profile(user: User, data, picture=None) -> None:
-    """Save the My Profile form: full name, email, membership and an optional picture."""
+    """Save the My Profile form: name, email, phone, address, membership and a picture."""
+    from .marketplace import PHONE_RE
     from .uploads import delete_image, save_image
 
     full_name = (data.get("name") or "").strip()
@@ -135,9 +136,17 @@ def update_profile(user: User, data, picture=None) -> None:
     membership = data.get("membership") or "Basic"
     if membership not in MEMBERSHIPS:
         raise ValidationError("Choose a membership type.")
+    phone = (data.get("phone") or "").strip()
+    if phone and not PHONE_RE.match(phone):
+        raise ValidationError("Enter a valid phone number.")
+    address = (data.get("address") or "").strip()
+    if len(address) > 500:
+        raise ValidationError("Address must be at most 500 characters.")
     change_email(user, data.get("email", ""))
     user.full_name = full_name
     user.membership = membership
+    user.phone = phone or None
+    user.address = address or None
     if picture is not None and picture.filename:
         old = user.avatar_filename
         user.avatar_filename, _ = save_image(picture)

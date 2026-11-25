@@ -1,0 +1,183 @@
+{% from "_site.html" import site_header, site_footer, site_flash with context %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forums - National Philatelic Community</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='site_layout.css') }}">
+    <style>
+        .forum-layout {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 20px;
+            align-items: start;
+        }
+
+        .forum-categories a {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 10px;
+            border-radius: 5px;
+            color: #333;
+            text-decoration: none;
+        }
+
+        .forum-categories a:hover,
+        .forum-categories a.active {
+            background: var(--site-teal);
+            color: white;
+        }
+
+        .thread {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            padding: 14px 4px;
+            border-bottom: 1px solid #e3e3e3;
+        }
+
+        .thread:last-child {
+            border-bottom: none;
+        }
+
+        .thread h3 {
+            margin: 0 0 4px;
+            font-size: 17px;
+        }
+
+        .thread h3 a {
+            color: rgb(0, 51, 102);
+            text-decoration: none;
+        }
+
+        .thread h3 a:hover {
+            text-decoration: underline;
+        }
+
+        .thread .count {
+            text-align: center;
+            min-width: 70px;
+            color: #555;
+            font-size: 13px;
+        }
+
+        .thread .count strong {
+            display: block;
+            font-size: 20px;
+            color: #333;
+        }
+
+        .forum-search {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .forum-search input {
+            flex: 1;
+        }
+
+        .forum-search .site-btn {
+            margin-top: 0;
+        }
+
+        .pager {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 800px) {
+            .forum-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body class="site">
+{{ site_header('forums') }}
+
+<main class="site-main">
+    {{ site_flash() }}
+    <div class="site-page-title">
+        <h2>Community Forums</h2>
+        <p>Ask for help identifying a stamp, talk trades, and share news with collectors and postal circles.</p>
+    </div>
+
+    <div class="forum-layout">
+        <aside>
+            <div class="site-card forum-categories">
+                <h3>Categories</h3>
+                <a href="{{ url_for('community.forums') }}" class="{{ 'active' if not category }}">All discussions <span>{{ category_counts.values()|sum }}</span></a>
+                {% for key, label in categories.items() %}
+                <a href="{{ url_for('community.forums', category=key) }}" class="{{ 'active' if category == key }}">{{ label }} <span>{{ category_counts.get(key, 0) }}</span></a>
+                {% endfor %}
+            </div>
+
+            <div class="site-card" style="text-align:center">
+                <h3>Meet the Collectors</h3>
+                <p class="site-muted">See collections, badges and who to follow.</p>
+                <a class="site-btn teal" href="{{ url_for('community.collectors') }}">Browse Collectors</a>
+            </div>
+
+            <div class="site-card">
+                <h3>Start a Discussion</h3>
+                {% if current_user.is_authenticated %}
+                <form class="site-form" method="post" action="{{ url_for('community.new_thread') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label for="category">Category</label>
+                    <select id="category" name="category" required>
+                        {% for key, label in categories.items() %}<option value="{{ key }}" {% if key == category %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                    </select>
+                    <label for="title">Title</label>
+                    <input type="text" id="title" name="title" maxlength="150" required>
+                    <label for="body">Message</label>
+                    <textarea id="body" name="body" rows="5" maxlength="5000" required></textarea>
+                    <button class="site-btn" type="submit">Post</button>
+                </form>
+                {% else %}
+                <p><a href="{{ url_for('auth.login', next=request.path) }}">Log in</a> to start a discussion or reply.</p>
+                {% endif %}
+            </div>
+        </aside>
+
+        <section class="site-card" style="background:white">
+            <form class="forum-search site-form" method="get">
+                {% if category %}<input type="hidden" name="category" value="{{ category }}">{% endif %}
+                <input type="search" name="q" value="{{ query }}" placeholder="Search discussions...">
+                <button class="site-btn blue" type="submit">Search</button>
+            </form>
+
+            {% for t in page.items %}
+            <div class="thread">
+                <div>
+                    <h3><a href="{{ url_for('community.thread', thread_id=t.id) }}">{{ t.title }}</a></h3>
+                    <div class="site-muted">
+                        <span class="site-pill">{{ t.category_label }}</span>
+                        by <a href="{{ url_for('community.collector', username=t.author.username) }}" style="color:inherit"><strong>{{ t.author.display_name }}</strong></a> {% for b in top_badges(t.author) %}<span title="{{ b.name }}">{{ b.icon }}</span>{% endfor %}
+                        {% if t.author.is_circle %}<span class="site-pill navy">{{ t.author.postal_circle }} Postal Circle</span>{% endif %}
+                        · {{ t.created_at.strftime('%d %b %Y') }}
+                    </div>
+                </div>
+                <div class="count"><strong>{{ reply_counts.get(t.id, 0) }}</strong>repl{{ 'y' if reply_counts.get(t.id, 0) == 1 else 'ies' }}</div>
+            </div>
+            {% else %}
+            <p>No discussions {{ 'match your search' if query else 'here yet' }}. Why not start one?</p>
+            {% endfor %}
+
+            {% if page.pages > 1 %}
+            <div class="pager">
+                {% if page.has_prev %}<a href="{{ url_for('community.forums', page=page.prev_num, category=category, q=query or None) }}">← Newer</a>{% endif %}
+                <span class="site-muted">Page {{ page.page }} of {{ page.pages }}</span>
+                {% if page.has_next %}<a href="{{ url_for('community.forums', page=page.next_num, category=category, q=query or None) }}">Older →</a>{% endif %}
+            </div>
+            {% endif %}
+        </section>
+    </div>
+</main>
+
+{{ site_footer() }}
+</body>
+</html>

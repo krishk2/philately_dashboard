@@ -1,0 +1,517 @@
+/* Shared layout for the community pages (Home, Stamp Store, Forums, Crash Course, Museum,
+   Notifications). The header, nav bar, footer and colours are taken from the original home page
+   (styles_for_home.css), under site-* class names so they can't clash with page styles or
+   Bootstrap (which also defines .navbar and .carousel). */
+
+:root {
+    --site-teal: #00D2B3;
+    --site-teal-dark: #00a88f;
+    --site-green-header: rgba(0, 77, 64, 0.85);
+    --site-navy: rgba(0, 51, 102, 0.92);
+    --site-blue: #007bff;
+    --site-buy: #28a745;
+}
+
+body.site {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-image: url('bg.avif');
+    background-size: cover;
+    background-attachment: fixed;
+    color: #333;
+}
+
+/* ---------- header ---------- */
+.site-header {
+    text-align: center;
+    padding: 20px;
+    background: var(--site-green-header);
+    color: white;
+    position: relative;
+}
+
+.site-header h1 {
+    margin: 0.4em 0 0.2em;
+}
+
+.site-header h1 a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.site-header .tagline {
+    font-size: 16px;
+    margin-top: 5px;
+}
+
+.site-auth {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
+
+.site-auth a {
+    color: white;
+    text-decoration: none;
+    margin: 0 5px;
+}
+
+/* ---------- profile icon + menu ---------- */
+.profile-menu {
+    position: relative;
+    text-align: left;
+}
+
+.profile-menu summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: white;
+}
+
+.profile-menu summary::-webkit-details-marker {
+    display: none;
+}
+
+.profile-avatar {
+    position: relative;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 2px solid white;
+    background: var(--site-teal);
+    color: white;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+    flex: 0 0 auto;
+}
+
+.profile-avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.profile-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 9px;
+    background: #dc3545;
+    color: white;
+    font-size: 11px;
+    line-height: 18px;
+    text-align: center;
+}
+
+.profile-name {
+    font-size: 14px;
+}
+
+.profile-dropdown {
+    position: absolute;
+    right: 0;
+    top: 52px;
+    width: 230px;
+    background: white;
+    color: #333;
+    border-radius: 8px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    padding: 8px 0;
+    z-index: 2000;
+}
+
+.profile-dropdown .who {
+    padding: 8px 16px 10px;
+    border-bottom: 1px solid #eee;
+    font-size: 13px;
+    color: #666;
+}
+
+.profile-dropdown .who strong {
+    display: block;
+    color: #333;
+    font-size: 15px;
+}
+
+.profile-dropdown a,
+.profile-dropdown button {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 16px;
+    color: #333;
+    text-decoration: none;
+    font: inherit;
+    font-size: 14px;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    margin: 0;
+}
+
+.profile-dropdown a:hover,
+.profile-dropdown button:hover {
+    background: #f0fbf9;
+    color: var(--site-teal-dark);
+}
+
+.profile-dropdown .count {
+    background: #dc3545;
+    color: white;
+    border-radius: 9px;
+    padding: 0 7px;
+    font-size: 12px;
+}
+
+.profile-dropdown hr {
+    border: none;
+    border-top: 1px solid #eee;
+    margin: 6px 0;
+}
+
+/* ---------- nav ---------- */
+.site-nav {
+    display: flex;
+    justify-content: center;
+    background: var(--site-navy);
+}
+
+.site-nav ul {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.site-nav li {
+    margin: 0 15px;
+}
+
+.site-nav a {
+    color: white;
+    text-decoration: none;
+    padding: 10px;
+    display: block;
+    border-bottom: 3px solid transparent;
+}
+
+.site-nav a:hover,
+.site-nav a.active {
+    border-bottom-color: var(--site-teal);
+}
+
+/* ---------- page content ---------- */
+.site-main {
+    max-width: 1150px;
+    margin: 0 auto;
+    padding: 30px 20px 40px;
+}
+
+.site-page-title {
+    text-align: center;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 8px;
+    padding: 18px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.site-page-title h2 {
+    margin: 0 0 6px;
+    font-size: 28px;
+}
+
+.site-page-title p {
+    margin: 0;
+    color: #555;
+}
+
+.site-card {
+    background: #f9f9f9;
+    border: 1px solid var(--site-teal);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.site-card h3 {
+    margin-top: 0;
+}
+
+.site-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+/* Card look of the home page's "On-Demand Stamps" carousel items. */
+.site-item {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.site-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+}
+
+.site-item img {
+    width: 100%;
+    aspect-ratio: 5 / 6;
+    object-fit: cover;
+    border-radius: 8px;
+    background: #eee;
+}
+
+.site-item h3 {
+    font-size: 18px;
+    margin: 10px 0 6px;
+}
+
+.site-item p {
+    margin: 4px 0;
+    color: #555;
+}
+
+.site-item .spacer {
+    flex: 1;
+}
+
+.site-btn {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 8px 16px;
+    background-color: var(--site-buy);
+    border: none;
+    color: white;
+    cursor: pointer;
+    text-decoration: none;
+    border-radius: 3px;
+    font: inherit;
+    font-size: 14px;
+}
+
+.site-btn:hover {
+    filter: brightness(0.92);
+}
+
+.site-btn.blue {
+    background-color: var(--site-blue);
+}
+
+.site-btn.teal {
+    background-color: var(--site-teal);
+}
+
+.site-btn.grey {
+    background-color: #6c757d;
+}
+
+.site-btn.red {
+    background-color: #dc3545;
+}
+
+.site-btn.small {
+    padding: 4px 10px;
+    font-size: 13px;
+}
+
+.site-muted {
+    color: #666;
+    font-size: 14px;
+}
+
+.site-pill {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    background: var(--site-teal);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.site-pill.navy {
+    background: rgb(0, 51, 102);
+}
+
+.site-pill.red {
+    background: #dc3545;
+}
+
+.site-form label {
+    display: block;
+    font-weight: bold;
+    margin: 10px 0 5px;
+}
+
+.site-form input[type="text"],
+.site-form input[type="search"],
+.site-form input[type="number"],
+.site-form select,
+.site-form textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font: inherit;
+}
+
+.site-flash {
+    margin: 0 0 15px;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 14px;
+    background: #cff4fc;
+    color: #055160;
+    border: 1px solid #b6effb;
+}
+
+.site-flash.error {
+    background: #f8d7da;
+    color: #842029;
+    border-color: #f5c2c7;
+}
+
+.site-flash.success {
+    background: #d1e7dd;
+    color: #0f5132;
+    border-color: #badbcc;
+}
+
+/* ---------- footer ---------- */
+.site-footer {
+    background: #222;
+    color: white;
+    padding: 10px 0;
+    text-align: center;
+}
+
+.site-footer ul {
+    list-style: none;
+    padding: 0;
+}
+
+.site-footer li {
+    display: inline-block;
+    margin: 4px 10px;
+}
+
+.site-footer a {
+    color: #ddd;
+    text-decoration: none;
+}
+
+/* ---------- chatbot (same as the home page) ---------- */
+.chatbot-icon-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    cursor: pointer;
+    z-index: 1000;
+}
+
+.chatbot-icon {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.chatbot-interface-container {
+    display: none;
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    width: 300px;
+    height: 400px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    z-index: 1001;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.chatbot-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background-color: #007bff;
+    color: white;
+    border-radius: 10px 10px 0 0;
+}
+
+#chat-log {
+    padding: 10px;
+    overflow-y: scroll;
+    height: 70%;
+}
+
+#user-input {
+    width: calc(100% - 22px);
+    margin: 10px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+#send-button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px;
+    width: calc(100% - 22px);
+    margin: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#send-button:hover {
+    background-color: #0056b3;
+}
+
+@media (max-width: 700px) {
+    .site-auth {
+        position: static;
+        display: flex;
+        justify-content: center;
+        margin-top: 10px;
+    }
+
+    .profile-dropdown {
+        right: auto;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .site-nav li {
+        margin: 0 4px;
+    }
+}

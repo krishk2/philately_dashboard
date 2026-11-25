@@ -16,8 +16,19 @@ from sqlalchemy import select
 from werkzeug.datastructures import FileStorage
 
 from .extensions import db
-from .models import ROLE_CIRCLE, ROLE_COLLECTOR, CircleUpdate, Event, User
+from .models import (
+    ROLE_CIRCLE,
+    ROLE_COLLECTOR,
+    CircleUpdate,
+    CourseProgress,
+    Event,
+    Follow,
+    ForumReply,
+    ForumThread,
+    User,
+)
 from .services import marketplace as svc
+from .services import npda as npda_svc
 
 DEMO_PASSWORD = "demo-password"
 
@@ -60,6 +71,21 @@ def _user(username: str, role: str, circle: str | None = None) -> User:
 
 
 def register_cli(app: Flask) -> None:
+    @app.cli.command("import-feeds")
+    def import_feeds():
+        """Fetch new stamp releases and philately news from India Post and RSS feeds."""
+        from .services.feeds import import_all
+
+        failed = False
+        for r in import_all():
+            if r.error:
+                failed = True
+                click.echo(f"{r.source}: FAILED ({r.error})")
+            else:
+                click.echo(f"{r.source}: {r.added} new, {r.updated} updated")
+        if failed:
+            raise SystemExit(1)
+
     @app.cli.command("seed")
     def seed():
         """Insert demo data (only into an empty database)."""
@@ -71,7 +97,24 @@ def register_cli(app: Flask) -> None:
         circle = _user("ap_circle", ROLE_CIRCLE, "Andhra Pradesh")
         alice = _user("alice", ROLE_COLLECTOR)
         bob = _user("bob", ROLE_COLLECTOR)
+        alice.full_name, alice.phone = "Alice Rao", "+91 98480 12345"
+        alice.address = "4-12 Benz Circle, Vijayawada 520010"
+        alice.bio = "Collecting Andhra Pradesh commemoratives and temple architecture."
+        bob.full_name, bob.phone = "Bob Kumar", "+91 90000 54321"
+        bob.address = "Balewadi High Street, Pune 411045"
         db.session.commit()
+
+        # Alice holds an NPDA account before the issues come out, so each new issue below is
+        # reserved for her automatically (the standing order in action).
+        npda_svc.open_account(
+            alice,
+            {
+                "home_circle": "Andhra Pradesh",
+                "copies_per_issue": "1",
+                "scope": "home",
+                "initial_deposit": "500",
+            },
+        )
 
         today = date.today()
         issues = []
@@ -124,13 +167,10 @@ def register_cli(app: Flask) -> None:
                 ),
             ]
         )
-        alice.full_name = "Alice Rao"
-        bob.full_name = "Bob Kumar"
-        db.session.commit()
 
         # 1. Matches its official issue exactly -> verified
         lepakshi = issues[0]
-        svc.create_listing(
+        lepakshi_listing = svc.create_listing(
             alice,
             {
                 "title": "Lepakshi Temple, mint",
@@ -178,6 +218,44 @@ def register_cli(app: Flask) -> None:
             },
             as_upload(draw_stamp(7, "Gandhi", "1.5a")),
         )
+
+        # Bob buys the Lepakshi stamp from Alice (a sale, a notification, and a collection item).
+        svc.place_order(
+            bob, lepakshi_listing.id, 1, bob.address, {"name": bob.full_name, "phone": bob.phone}
+        )
+
+        # Forums, follows and course progress, so the community pages aren't empty.
+        alice_id = alice.id  # read before building objects, to avoid a mid-build autoflush
+        thread = ForumThread(
+            author=bob,
+            category="identification",
+            title="Is my 1948 Gandhi 1.5 anna genuine?",
+            body="Found it in my grandfather's album. The perforations look a little uneven. "
+            "What should I check?",
+        )
+        db.session.add(thread)
+        db.session.add_all(
+            [
+                ForumReply(
+                    thread=thread,
+                    author=alice,
+                    body="Compare the watermark and perforation gauge with a catalogue. "
+                    "The 1948 set was printed by Courvoisier in Switzerland, so the print "
+                    "quality should be very sharp.",
+                ),
+                ForumThread(
+                    author=circle,
+                    category="new-issues",
+                    title="Lepakshi Temple stamp now available",
+                    body="Pre-book it in the Stamp Store, or open an NPDA account to get "
+                    "every new Andhra Pradesh issue automatically.",
+                ),
+                Follow(follower=bob, followed=alice),
+                CourseProgress(user_id=alice_id, week="week1"),
+                CourseProgress(user_id=alice_id, week="week2"),
+            ]
+        )
+        db.session.commit()
 
         click.echo(
             "Seeded. Log in as ap_circle (postal circle), alice or bob "

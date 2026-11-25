@@ -1,100 +1,32 @@
+{% from "_site.html" import site_header, site_footer, site_flash with context %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Indian Stamp Museum</title>
+    <title>Indian Stamp Museum - National Philatelic Community</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='site_layout.css') }}">
     <style>
-        body {
-            font-family: 'Montserrat', sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f9f9f9;
-            color: #333;
-        }
-
-        /* Header */
-        header {
-            background-color: #8B0000;
-            color: white;
-            text-align: center;
-            padding: 20px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        header h1 {
-            margin: 0;
-            font-size: 2.5em;
-        }
-
-        /* Main content */
-        .museum-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin: 20px;
-        }
-
-        .stamp-collection {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            grid-gap: 20px;
+        .museum-placeholder {
             width: 100%;
-            max-width: 1200px;
-            margin-top: 20px;
-        }
-
-        .stamp {
-            background-color: white;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            padding: 15px;
-            text-align: center;
+            aspect-ratio: 5 / 6;
             border-radius: 8px;
-            transition: transform 0.3s;
+            background: #f3efe6;
+            border: 6px dashed #fff;
+            outline: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 64px;
+            box-sizing: border-box;
         }
 
-        .stamp:hover {
-            transform: scale(1.05);
-        }
-
-        .stamp img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 4px;
-            margin-bottom: 10px;
-        }
-
-        .stamp h3 {
-            margin: 10px 0 5px;
-            font-size: 1.2em;
-            color: #8B0000;
-        }
-
-        .stamp p {
-            font-size: 0.9em;
-            color: #555;
-        }
-
-        /* Footer */
-        footer {
-            background-color: #333;
-            color: white;
-            text-align: center;
-            padding: 20px 0;
-            margin-top: 50px;
-        }
-
-        footer p {
-            margin: 0;
-        }
-
-        /* Scroll to top button */
         .scroll-top {
             position: fixed;
-            bottom: 20px;
-            right: 20px;
+            bottom: 90px;
+            right: 26px;
             display: none;
-            background-color: #8B0000;
+            background-color: rgb(0, 51, 102);
             color: white;
             border: none;
             border-radius: 50%;
@@ -103,88 +35,73 @@
             cursor: pointer;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
-
-        .scroll-top:hover {
-            background-color: #B22222;
-        }
-
-        /* Responsive design */
-        @media (max-width: 768px) {
-            header h1 {
-                font-size: 2em;
-            }
-
-            .stamp-collection {
-                grid-template-columns: 1fr;
-            }
-        }
     </style>
 </head>
-<body>
+<body class="site">
+{{ site_header('museum') }}
 
-<header>
-    <h1>Indian Stamp Museum</h1>
-    <p>Explore the rich history of India through its stamps</p>
-</header>
-
-<div class="museum-container">
-    <h2>Featured Stamps</h2>
-    <div class="stamp-collection">
-        <!-- Stamp 1 -->
-        <div class="stamp">
-            <img src="stamp1.jpg" alt="Stamp 1">
-            <h3>Stamp 1: Mahatma Gandhi</h3>
-            <p>This stamp honors the father of the nation, Mahatma Gandhi, with an iconic image of him spinning the charkha.</p>
-        </div>
-
-        <!-- Stamp 2 -->
-        <div class="stamp">
-            <img src="stamp2.jpg" alt="Stamp 2">
-            <h3>Stamp 2: Indian Independence</h3>
-            <p>This stamp commemorates India's independence from British rule in 1947.</p>
-        </div>
-
-        <!-- Stamp 3 -->
-        <div class="stamp">
-            <img src="stamp3.jpg" alt="Stamp 3">
-            <h3>Stamp 3: Taj Mahal</h3>
-            <p>A beautiful stamp showcasing the world-famous monument, the Taj Mahal, a symbol of India's rich heritage.</p>
-        </div>
-
-        <!-- Stamp 4 -->
-        <div class="stamp">
-            <img src="stamp4.jpg" alt="Stamp 4">
-            <h3>Stamp 4: Indian Railways</h3>
-            <p>This stamp celebrates the vast and historical Indian railway system, a lifeline of the nation.</p>
-        </div>
-
-        <!-- Add more stamps as needed -->
+<main class="site-main">
+    {{ site_flash() }}
+    <div class="site-page-title">
+        <h2>Indian Stamp Museum</h2>
+        <p>Explore the rich history of India through its stamps</p>
     </div>
-</div>
 
-<footer>
-    <p>© 2024 Indian Stamp Museum. All Rights Reserved.</p>
-</footer>
+    <h2 style="color:white;text-shadow:0 1px 3px rgba(0,0,0,.6)">Featured Stamps</h2>
+    <div class="site-grid">
+        {% set featured = [
+            ('famous.jpg', 'Mahatma Gandhi', 'This stamp honours the father of the nation, Mahatma Gandhi, with an iconic image of him spinning the charkha.'),
+            ('cancellation.jpg', 'Indian Independence', "This stamp commemorates India's independence from British rule in 1947."),
+            ('monuments.jpg', 'Taj Mahal', "A beautiful stamp showcasing the world-famous monument, the Taj Mahal, a symbol of India's rich heritage."),
+            (None, 'Indian Railways', 'This stamp celebrates the vast and historical Indian railway system, a lifeline of the nation.'),
+        ] %}
+        {% for image, title, text in featured %}
+        <div class="site-item">
+            {% if image %}
+                <img src="{{ url_for('static', filename=image) }}" alt="{{ title }}" loading="lazy">
+            {% else %}
+                <div class="museum-placeholder" role="img" aria-label="{{ title }}">🚂</div>
+            {% endif %}
+            <h3>{{ title }}</h3>
+            <p>{{ text }}</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <h2 style="color:white;text-shadow:0 1px 3px rgba(0,0,0,.6);margin-top:35px">Archive of Official Issues</h2>
+    {% if archive %}
+    <div class="site-grid">
+        {% for issue in archive %}
+        <div class="site-item">
+            <img src="{{ url_for('main.uploaded_file', filename=issue.reference_image) }}" alt="{{ issue.title }}" loading="lazy">
+            <h3>{{ issue.title }}</h3>
+            <p class="site-muted">{{ issue.issue_date.strftime('%d %b %Y') }} · ₹{{ issue.denomination }}</p>
+            <p class="site-muted">{{ issue.circle.postal_circle }} Postal Circle</p>
+            {% if issue.description %}<p>{{ issue.description }}</p>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="site-card"><p>Official issues published by the postal circles will be archived here.</p></div>
+    {% endif %}
+</main>
 
 <!-- Scroll to top button -->
-<button class="scroll-top" onclick="scrollToTop()">↑</button>
+<button class="scroll-top" onclick="scrollToTop()" aria-label="Scroll to top">↑</button>
+
+{{ site_footer() }}
 
 <script>
     // Scroll to top functionality
-    window.onscroll = function() {
+    window.addEventListener('scroll', function() {
         var scrollTopBtn = document.querySelector('.scroll-top');
-        if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
-            scrollTopBtn.style.display = 'block';
-        } else {
-            scrollTopBtn.style.display = 'none';
-        }
-    };
+        scrollTopBtn.style.display =
+            (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) ? 'block' : 'none';
+    });
 
     function scrollToTop() {
-        document.body.scrollTop = 0;
-        document.documentElement.scrollTop = 0;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 </script>
-
 </body>
 </html>

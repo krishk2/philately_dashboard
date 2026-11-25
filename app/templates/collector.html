@@ -1,0 +1,177 @@
+{% from "_site.html" import site_header, site_footer, site_flash with context %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ user.display_name }} - Collector Profile</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='site_layout.css') }}">
+    <style>
+        .profile-hero {
+            display: flex;
+            gap: 25px;
+            align-items: center;
+            flex-wrap: wrap;
+            background: white;
+        }
+        .profile-hero .profile-avatar {
+            width: 110px;
+            height: 110px;
+            font-size: 36px;
+            border-color: var(--site-teal);
+        }
+        .profile-hero h2 { margin: 0 0 4px; }
+        .profile-hero .numbers { display: flex; gap: 22px; margin-top: 10px; }
+        .profile-hero .numbers strong { display: block; font-size: 22px; }
+        .profile-hero .actions { margin-left: auto; }
+        .badges {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+            gap: 12px;
+        }
+        .badge-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+        .badge-card .icon { font-size: 34px; }
+        .badge-card h4 { margin: 6px 0 4px; font-size: 15px; }
+        .badge-card p { margin: 0; font-size: 12px; color: #666; }
+        .badge-card.locked { opacity: 0.45; filter: grayscale(1); }
+        .badge-card .meter { height: 6px; background: #eee; border-radius: 3px; margin-top: 8px; overflow: hidden; }
+        .badge-card .meter span { display: block; height: 100%; background: var(--site-teal); }
+        .tag { font-size: 12px; padding: 2px 8px; border-radius: 10px; background: #eef; color: #335; }
+        .threads a { color: rgb(0, 51, 102); }
+    </style>
+</head>
+<body class="site">
+{{ site_header() }}
+
+<main class="site-main">
+    {{ site_flash() }}
+
+    <section class="site-card profile-hero">
+        <span class="profile-avatar">
+            {%- if user.avatar_filename -%}<img src="{{ url_for('main.uploaded_file', filename=user.avatar_filename) }}" alt="">
+            {%- else -%}{{ user.initials }}{%- endif -%}
+        </span>
+        <div>
+            <h2>{{ user.display_name }}</h2>
+            <div class="site-muted">@{{ user.username }} · member since {{ user.created_at.strftime('%b %Y') }}
+                {% if user.is_circle %}<span class="site-pill navy">{{ user.postal_circle }} Postal Circle</span>{% endif %}
+                {% if user.npda and user.npda.is_active %}<span class="site-pill">NPDA member</span>{% endif %}
+            </div>
+            {% if user.bio %}<p style="max-width:600px">{{ user.bio }}</p>{% endif %}
+            <div class="numbers">
+                {% if collection is not none %}<div><strong>{{ collection|length }}</strong><span class="site-muted">in collection</span></div>{% endif %}
+                <div><strong>{{ badges|selectattr('earned')|list|length }}</strong><span class="site-muted">badges</span></div>
+                <div><strong>{{ followers }}</strong><span class="site-muted">followers</span></div>
+                <div><strong>{{ following }}</strong><span class="site-muted">following</span></div>
+            </div>
+        </div>
+        <div class="actions">
+            {% if own %}
+                <a class="site-btn grey" href="{{ url_for('member.myprofile') if not user.is_circle else url_for('circle.settings') }}">Edit profile</a>
+            {% elif current_user.is_authenticated %}
+                <form method="post" action="{{ url_for('community.follow', username=user.username) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="site-btn {{ 'grey' if is_following else 'teal' }}">{{ 'Following ✓' if is_following else '+ Follow' }}</button>
+                </form>
+            {% else %}
+                <a class="site-btn teal" href="{{ url_for('auth.login', next=request.path) }}">Log in to follow</a>
+            {% endif %}
+        </div>
+    </section>
+
+    {% if own %}
+    <section class="site-card">
+        <h3>Your Public Profile</h3>
+        <form class="site-form" method="post" action="{{ url_for('community.collection_visibility') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label for="bio">Short bio</label>
+            <input type="text" id="bio" name="bio" maxlength="300" value="{{ user.bio or '' }}" placeholder="e.g. I collect Indian commemoratives and birds on stamps">
+            <label style="font-weight:normal"><input type="checkbox" name="show_collection" value="1" {% if user.show_collection %}checked{% endif %}> Show my collection to other collectors</label>
+            <button class="site-btn" type="submit">Save</button>
+        </form>
+    </section>
+    {% endif %}
+
+    {% if badges %}
+    <section class="site-card">
+        <h3>Badges</h3>
+        <div class="badges">
+            {% for b in badges %}
+            {% if b.earned or own %}
+            <div class="badge-card {{ 'locked' if not b.earned }}" title="{{ b.description }}">
+                <div class="icon">{{ b.icon }}</div>
+                <h4>{{ b.name }}</h4>
+                <p>{{ b.description }}</p>
+                {% if not b.earned %}
+                <div class="meter"><span style="width: {{ (b.progress / b.target * 100)|round }}%"></span></div>
+                <p>{{ b.progress }} / {{ b.target }}</p>
+                {% endif %}
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% if not own and not badges|selectattr('earned')|list %}<p class="site-muted">No badges earned yet.</p>{% endif %}
+    </section>
+    {% endif %}
+
+    {% if not user.is_circle %}
+    <section class="site-card">
+        <h3>Collection</h3>
+        {% if collection is none %}
+            <p class="site-muted">{{ user.display_name }} keeps their collection private.</p>
+        {% elif collection %}
+            <div class="site-grid">
+                {% for item in collection %}
+                <div class="site-item">
+                    <img src="{{ item.image_url }}" alt="{{ item.title }}" loading="lazy">
+                    <h3>{{ item.title }}</h3>
+                    <p class="site-muted">{{ item.detail }}</p>
+                    <p><span class="tag">{{ item.how }}</span></p>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="site-muted">No stamps yet.</p>
+        {% endif %}
+    </section>
+
+    {% if for_sale %}
+    <section class="site-card">
+        <h3>For Sale</h3>
+        <div class="site-grid">
+            {% for l in for_sale %}
+            <div class="site-item">
+                <img src="{{ url_for('main.uploaded_file', filename=l.image_filename) }}" alt="{{ l.title }}" loading="lazy">
+                <h3>{{ l.title }}</h3>
+                <p class="site-muted">{{ l.year }} · ₹{{ l.price }}</p>
+                {% if l.verification %}<p><span class="site-pill {{ 'red' if l.verification.status == 'flagged' else '' }}">{{ l.verification.status.replace('_', ' ')|title }}</span></p>{% endif %}
+                <div class="spacer"></div>
+                <a class="site-btn" href="{{ url_for('main.stamp_detail', listing_id=l.id) }}">View</a>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+    {% endif %}
+
+    {% if threads %}
+    <section class="site-card threads">
+        <h3>Recent Discussions</h3>
+        <ul>
+            {% for t in threads %}
+            <li><a href="{{ url_for('community.thread', thread_id=t.id) }}">{{ t.title }}</a> <span class="site-muted">· {{ t.category_label }} · {{ t.created_at.strftime('%d %b %Y') }}</span></li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+</main>
+
+{{ site_footer() }}
+</body>
+</html>

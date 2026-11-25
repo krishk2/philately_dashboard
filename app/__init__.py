@@ -40,6 +40,7 @@ def create_app(config_name: str | None = None) -> Flask:
     from .api import bp as api_bp
     from .auth import bp as auth_bp
     from .circle import bp as circle_bp
+    from .community import bp as community_bp
     from .member import bp as member_bp
     from .web import bp as web_bp
 
@@ -47,7 +48,33 @@ def create_app(config_name: str | None = None) -> Flask:
     app.register_blueprint(auth_bp)
     app.register_blueprint(member_bp)
     app.register_blueprint(circle_bp)
+    app.register_blueprint(community_bp)
     app.register_blueprint(api_bp)
+
+    from .services.sso import enabled_providers, register_providers
+
+    register_providers(app)
+    sso_buttons = enabled_providers(app)
+
+    @app.context_processor
+    def inject_sso_providers():
+        return {"sso_providers": sso_buttons}
+
+    @app.context_processor
+    def inject_unread_count():
+        """Unread notification count for the profile icon in the site header."""
+        from flask_login import current_user
+        from sqlalchemy import func, select
+
+        if not current_user.is_authenticated:
+            return {"unread_count": 0}
+        count = db.session.scalar(
+            select(func.count(models.Notification.id)).where(
+                models.Notification.user_id == current_user.id,
+                models.Notification.is_read.is_(False),
+            )
+        )
+        return {"unread_count": count or 0}
 
     _register_error_pages(app)
 

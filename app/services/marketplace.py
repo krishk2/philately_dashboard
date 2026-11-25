@@ -22,6 +22,7 @@ from ..models import (
 )
 from ..verification import verify_listing
 from .errors import Forbidden, OutOfStock, ValidationError
+from .notifications import notify
 from .uploads import delete_image, save_image
 
 MIN_YEAR = 1840  # the Penny Black, the first postage stamp
@@ -245,6 +246,12 @@ def place_order(
         contact_phone=phone,
     )
     db.session.add(order)
+    notify(
+        listing.seller_id,
+        f"Sold! {name} bought {quantity} × '{listing.title}' (₹{order.total}). "
+        "Delivery details are on your Orders page.",
+        "/orders",
+    )
     db.session.commit()
     return order
 
@@ -296,6 +303,11 @@ def create_issue(circle: User, data, image) -> Issue:
     issue.reference_image, issue.reference_hash = save_image(image)
     db.session.add(issue)
     db.session.commit()
+
+    # NPDA standing orders: subscribers get their copies reserved as soon as the issue is out.
+    from .npda import fulfil_new_issue  # local import: npda depends on this module
+
+    issue.npda_result = fulfil_new_issue(issue)
     return issue
 
 

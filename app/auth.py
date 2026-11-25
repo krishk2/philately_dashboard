@@ -6,12 +6,25 @@ route. The login routes check that the account actually has that role.
 
 from urllib.parse import urlsplit
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from authlib.integrations.base_client import OAuthError
+from flask import (
+    Blueprint,
+    abort,
+    current_app,
+    flash,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from flask_login import current_user, login_required, login_user, logout_user
 
+from .extensions import oauth
 from .models import POSTAL_CIRCLES, ROLE_CIRCLE, ROLE_COLLECTOR
 from .services.accounts import authenticate, register_user
 from .services.errors import ValidationError
+from .services.sso import PROVIDERS, user_from_claims
 
 bp = Blueprint("auth", __name__)
 
@@ -103,3 +116,42 @@ def logout():
     logout_user()
     flash("You have been logged out.", "info")
     return redirect(url_for("auth.login"))
+
+
+# ---------- Google / Yahoo sign-in ----------
+
+
+@bp.route("/login/<provider>")
+def sso_login(provider):
+    client = oauth.create_client(provider) if provider in PROVIDERS else None
+    if client is None:
+        flash("That sign-in option isn't available.", "error")
+        return redirect(url_for("auth.login"))
+    session["sso_next"] = _safe_next(request.args.get("next"))
+    redirect_uri = url_for("auth.sso_callback", provider=provider, _external=True)
+    return client.authorize_redirect(redirect_uri)
+
+
+@bp.route("/login/<provider>/callback")
+def sso_callback(provider):
+    client = oauth.create_client(provider) if provider in PROVIDERS else None
+    if client is None:
+        abort(404)
+    if request.args.get("error"):  # the user pressed "Cancel" on the provider's page
+        flash("Sign-in was cancelled.", "info")
+        return redirect(url_for("auth.login"))
+    try:
+        # Exchanges the code and validates the ID token (signature, audience, expiry, nonce).
+        token = client.authorize_access_token()
+        claims = token.get("userinfo") or client.userinfo(token=token)
+        user = user_from_claims(provider, dict(claims))
+    except ValidationError as exc:
+        flash(exc.message, "error")
+        return redirect(url_for("auth.login"))
+    except OAuthError:
+        current_app.logger.warning("SSO failed for %s", provider, exc_info=True)
+        flash("Sign-in failed. Please try again.", "error")
+        return redirect(url_for("auth.login"))
+    login_user(user)
+    flash(f"Signed in with {PROVIDERS[provider]['label']}.", "success")
+    return redirect(session.pop("sso_next", None) or home_for(user))

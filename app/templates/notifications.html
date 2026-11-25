@@ -1,0 +1,56 @@
+{% from "_site.html" import site_header, site_footer, site_flash with context %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications - National Philatelic Community</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='site_layout.css') }}">
+    <style>
+        .note {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            padding: 12px 6px;
+            border-bottom: 1px solid #e3e3e3;
+        }
+
+        .note.unread {
+            background: #e9fbf7;
+            border-left: 4px solid var(--site-teal);
+        }
+
+        .note a {
+            color: rgb(0, 51, 102);
+        }
+    </style>
+</head>
+<body class="site">
+{{ site_header() }}
+
+<main class="site-main" style="max-width: 850px">
+    {{ site_flash() }}
+    <div class="site-card" style="background:white">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+            <h2 style="margin:0">Notifications</h2>
+            {% if unread_count %}
+            <form method="post" action="{{ url_for('member.notifications_read') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="site-btn teal small" style="margin:0">Mark all as read ({{ unread_count }})</button>
+            </form>
+            {% endif %}
+        </div>
+        {% for n in items %}
+        <div class="note {{ 'unread' if not n.is_read }}">
+            <span>{{ n.message }}{% if n.link %} <a href="{{ n.link }}">View</a>{% endif %}</span>
+            <span class="site-muted" style="white-space:nowrap">{{ n.created_at.strftime('%d %b, %H:%M') }}</span>
+        </div>
+        {% else %}
+        <p>No notifications yet. NPDA bookings, forum replies and sales will show up here.</p>
+        {% endfor %}
+    </div>
+</main>
+
+{{ site_footer(chatbot=False) }}
+</body>
+</html>

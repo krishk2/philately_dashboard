@@ -1,3 +1,7 @@
+{% from "_site.html" import site_header, site_footer, site_flash with context %}
+{% macro feed_note() -%}
+{% if feeds_updated %}<p style="font-size:13px;color:#777;margin-top:15px">Headlines marked India Post or Rainbow Stamp News are imported automatically and link to the original source. Last updated {{ feeds_updated.strftime('%d %b %Y, %H:%M') }} UTC.</p>{% endif %}
+{%- endmacro %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,37 +10,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>National Philatelic Community</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles_for_home.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='site_layout.css') }}">
 </head>
-<body>
+<body class="site">
 
-<!-- Header with Login/Register -->
-<header class="header">
-    <h1>National Philatelic Community</h1>
-    <p class="tagline">Uniting Philatelists Across the Nation</p>
-    <div class="auth-links">
-        {% if current_user.is_authenticated %}
-        <a href="{{ url_for('circle.dashboard') if current_user.is_circle else url_for('member.dashboard') }}">{{ current_user.username }}</a> /
-        <form action="{{ url_for('auth.logout') }}" method="post" style="display:inline">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" style="background:none;border:none;padding:0;color:inherit;font:inherit;text-decoration:inherit;cursor:pointer">Logout</button>
-        </form>
-        {% else %}
-        <a href="{{ url_for('auth.login') }}">Login</a> / <a href="{{ url_for('auth.register') }}">Register</a>
-        {% endif %}
-    </div>
-</header>
-
-<!-- Navigation Bar -->
-<nav class="navbar">
-    <ul>
-        <li><a href="{{ url_for('main.home') }}">Home</a></li>
-        <li><a href="{{ url_for('main.stamp_store') }}">Stamp Store</a></li>
-        <li><a href="#">Forums</a></li>
-        <li><a href="{{ url_for('main.philately_crash_course') }}">Philately Crash Course</a></li>
-        <li><a href="{{ url_for('main.stamp_mela') }}">Stamp Mela</a></li>
-        <li><a href="{{ url_for('main.stamp_museum') }}">Stamp Museum</a></li>
-    </ul>
-</nav>
+{{ site_header('home') }}
+<div style="max-width:1150px;margin:15px auto 0;padding:0 20px">{{ site_flash() }}</div>
 
 <!-- Carousel Slider Section -->
 <section class="carousel-section">
@@ -130,9 +109,18 @@
             <span class="postal-circle">{{ issue.circle.postal_circle }} Postal Circle</span> -
             <a href="{{ url_for('main.pre_book', issue_id=issue.id) }}">Release of {{ issue.title }} (₹{{ issue.denomination }})</a>
         </div>
-        {% else %}
-        <div class="news-item">No stamp releases announced yet.</div>
         {% endfor %}
+        {% for item in feed_releases %}
+        <div class="news-item">
+            <span class="date">({{ item.published_on.strftime('%d.%m.%Y') if item.published_on else 'date n/a' }})</span>
+            <span class="postal-circle">{{ item.source_label }}</span> -
+            <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}{% if item.denomination %} (₹{{ item.denomination|int if item.denomination == item.denomination|int else item.denomination }}{% if item.stamp_count and item.stamp_count > 1 %} × {{ item.stamp_count }} stamps{% endif %}){% endif %}</a>
+        </div>
+        {% endfor %}
+        {% if not releases and not feed_releases %}
+        <div class="news-item">No stamp releases announced yet.</div>
+        {% endif %}
+        {{ feed_note() }}
     </div>
 
     <div class="tab-content" id="events">
@@ -160,9 +148,16 @@
                         </li>
                     {% endfor %}
                 </ul>
-            {% else %}
+            {% elif not feed_events %}
                 <p>No events available at the moment.</p>
             {% endif %}
+            {% for item in feed_events %}
+            <div class="news-item">
+                <span class="date">({{ item.published_on.strftime('%d.%m.%Y') if item.published_on else 'date n/a' }})</span>
+                <span class="postal-circle">{{ item.source_label }}</span> -
+                <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a>
+            </div>
+            {% endfor %}
         </section>
     </div>
 
@@ -175,15 +170,31 @@
             <strong>{{ update.kind_label }}: {{ update.title }}</strong>
             <p>{{ update.content }}</p>
         </div>
-        {% else %}
-        <div class="news-item">No news posted yet.</div>
         {% endfor %}
+        {% for item in feed_news %}
+        <div class="news-item">
+            <span class="date">({{ item.published_on.strftime('%d.%m.%Y') if item.published_on else 'date n/a' }})</span>
+            <span class="postal-circle">{{ item.source_label }}</span> -
+            <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a>
+            {% if item.summary and item.summary != item.title %}<p>{{ item.summary }}</p>{% endif %}
+        </div>
+        {% endfor %}
+        {% if not news and not feed_news %}
+        <div class="news-item">No news posted yet.</div>
+        {% endif %}
+        {{ feed_note() }}
     </div>
 </div>
 
 <!-- NPDA Account Prompt -->
 <section class="npda-account">
-    <p>Don't you have an NPDA account? <button class="create-account" onclick="location.href='{{ url_for('auth.register') }}'">Create One</button></p>
+    {% if current_user.is_authenticated and current_user.npda and current_user.npda.is_active %}
+    <p>Your NPDA account {{ current_user.npda.account_number }} has ₹{{ current_user.npda.balance }}. New issues are reserved for you automatically. <button class="create-account" onclick="location.href='{{ url_for('member.npda') }}'">Manage</button></p>
+    {% elif current_user.is_authenticated and current_user.is_circle %}
+    <p>Collectors with an NPDA account get your new issues reserved automatically the moment you publish them.</p>
+    {% else %}
+    <p>Don't you have an NPDA account? <button class="create-account" onclick="location.href='{{ url_for('member.npda') }}'">Create One</button></p>
+    {% endif %}
 </section>
 
 <!-- Search Section -->
@@ -193,33 +204,7 @@
     <button class="search-button" type="submit">Search</button>
 </form>
 
-<!-- Bot Icon -->
-<div class="chatbot-icon-container" id="chatbotIcon">
-    <img src="{{ url_for('static', filename='bot.jpg') }}" alt="Chatbot Icon" class="chatbot-icon">
-</div>
-
-<div class="chatbot-interface-container" id="chatbotInterface">
-    <div class="chatbot-header">
-        <h3>Chatbot</h3>
-        <button id="closeChatbot">✖</button>
-    </div>
-    <div id="chat-log">
-        <p>Hi there! Need help with anything?</p>
-    </div>
-    <input type="text" id="user-input" placeholder="Ask me something...">
-    <button id="send-button">Send</button>
-</div>
-
-<!-- Footer Section -->
-<footer class="footer">
-    <ul class="footer-links">
-        <li><a href="https://www.indiapost.gov.in/">India Post</a></li>
-        <li><a href="https://postagestamps.gov.in/">Postage Stamps of India</a></li>
-        <li><a href="#">National Philatelic Museum</a></li>
-        <li><a href="#">International Philatelic Federation</a></li>
-        <li><a href="#">Stamp Collecting Basics</a></li>
-    </ul>
-</footer>
+{{ site_footer() }}
 
 <script src="{{ url_for('static', filename='script_for_home.js') }}"></script>
 

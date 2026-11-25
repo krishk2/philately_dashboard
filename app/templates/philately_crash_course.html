@@ -1,343 +1,200 @@
+{% from "_site.html" import site_header, site_footer, site_flash with context %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crash Course</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
-    <!-- <link rel="stylesheet" href="styles.css"> -->
+    <title>Philately Crash Course - National Philatelic Community</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='site_layout.css') }}">
     <style>
-        body{
-    margin-top:20px;
-    color: #bcd0f7;
-    background: #1A233A;
-}
-.timeline {
-    position: relative;
-    background: #272e48;
-    -webkit-border-radius: 4px;
-    -moz-border-radius: 4px;
-    border-radius: 4px;
-    padding: 5rem;
-    margin: 0 auto 1rem auto;
-    overflow: hidden;
-}
-.timeline:after {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 50%;
-    margin-left: -2px;
-    border-right: 2px dashed #4b546f;
-    height: 100%;
-    display: block;
-}
-
-.timeline-row {
-    padding-left: 50%;
-    position: relative;
-    margin-bottom: 30px;
-}
-.timeline-row .timeline-time {
-    position: absolute;
-    right: 50%;
-    top: 15px;
-    text-align: right;
-    margin-right: 20px;
-    color: #bcd0f7;
-    font-size: 1.5rem;
-}
-.timeline-row .timeline-time small {
-    display: block;
-    font-size: 0.8rem;
-}
-.timeline-row .timeline-content {
-    position: relative;
-    padding: 20px 30px;
-    background: #1a233a;
-    -webkit-border-radius: 4px;
-    -moz-border-radius: 4px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    text-align: center;
-}
-.timeline-row .timeline-content:after {
-    content: "";
-    position: absolute;
-    top: 20px;
-    height: 16px;
-    width: 16px;
-    background: #1a233a;
-}
-.timeline-row .timeline-content:before {
-    content: "";
-    position: absolute;
-    top: 20px;
-    right: -49px;
-    width: 20px;
-    height: 20px;
-    -webkit-border-radius: 100px;
-    -moz-border-radius: 100px;
-    border-radius: 100px;
-    z-index: 10;
-    background: #272e48;
-    border: 2px dashed #4b546f;
-}
-.timeline-row .timeline-content h4 {
-    margin: 0 0 20px 0;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    line-height: 150%;
-}
-.timeline-row .timeline-content p {
-    margin-bottom: 30px;
-    line-height: 150%;
-}
-.timeline-row .timeline-content i {
-    font-size: 1.2rem;
-    line-height: 100%;
-    padding: 15px;
-    -webkit-border-radius: 100px;
-    -moz-border-radius: 100px;
-    border-radius: 100px;
-    background: #272e48;
-    margin-bottom: 10px;
-    display: inline-block;
-}
-.timeline-row .timeline-content .thumbs {
-    margin-bottom: 20px;
-    display: flex;
-}
-.timeline-row .timeline-content .thumbs img {
-    margin: 5px;
-    max-width: 60px;
-}
-.timeline-row .timeline-content .badge {
-    color: #ffffff;
-    background: linear-gradient(120deg, #00b5fd 0%, #0047b1 100%);
-}
-.timeline-row:nth-child(even) .timeline-content {
-    margin-left: 40px;
-    text-align: left;
-}
-.timeline-row:nth-child(even) .timeline-content:after {
-    left: -8px;
-    right: initial;
-    border-bottom: 0;
-    border-left: 0;
-    transform: rotate(-135deg);
-}
-.timeline-row:nth-child(even) .timeline-content:before {
-    left: -52px;
-    right: initial;
-}
-.timeline-row:nth-child(odd) {
-    padding-left: 0;
-    padding-right: 50%;
-}
-.timeline-row:nth-child(odd) .timeline-time {
-    right: auto;
-    left: 50%;
-    text-align: left;
-    margin-right: 0;
-    margin-left: 20px;
-}
-.timeline-row:nth-child(odd) .timeline-content {
-    margin-right: 40px;
-}
-.timeline-row:nth-child(odd) .timeline-content:after {
-    right: -8px;
-    border-left: 0;
-    border-bottom: 0;
-    transform: rotate(45deg);
-}
-
-@media (max-width: 992px) {
-    .timeline {
-        padding: 15px;
-    }
-    .timeline:after {
-        border: 0;
-    }
-    .timeline .timeline-row:nth-child(odd) {
-        padding: 0;
-    }
-    .timeline .timeline-row:nth-child(odd) .timeline-time {
-        position: relative;
-        top: 0;
-        left: 0;
-        margin: 0 0 10px 0;
-    }
-    .timeline .timeline-row:nth-child(odd) .timeline-content {
-        margin: 0;
-    }
-    .timeline .timeline-row:nth-child(odd) .timeline-content:before {
-        display: none;
-    }
-    .timeline .timeline-row:nth-child(odd) .timeline-content:after {
-        display: none;
-    }
-    .timeline .timeline-row:nth-child(even) {
-        padding: 0;
-    }
-    .timeline .timeline-row:nth-child(even) .timeline-time {
-        position: relative;
-        top: 0;
-        left: 0;
-        margin: 0 0 10px 0;
-        text-align: left;
-    }
-    .timeline .timeline-row:nth-child(even) .timeline-content {
-        margin: 0;
-    }
-    .timeline .timeline-row:nth-child(even) .timeline-content:before {
-        display: none;
-    }
-    .timeline .timeline-row:nth-child(even) .timeline-content:after {
-        display: none;
-    }
-}
-
+        /* The original timeline, recoloured to the home page palette. */
+        .timeline {
+            position: relative;
+            background: rgba(255, 255, 255, 0.92);
+            border-radius: 8px;
+            padding: 3rem;
+            margin: 0 auto 1rem auto;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .timeline:after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 50%;
+            margin-left: -2px;
+            border-right: 2px dashed var(--site-teal);
+            height: 100%;
+            display: block;
+        }
+        .timeline-row {
+            padding-left: 50%;
+            position: relative;
+            margin-bottom: 30px;
+        }
+        .timeline-row .timeline-time {
+            position: absolute;
+            right: 50%;
+            top: 15px;
+            text-align: right;
+            margin-right: 20px;
+            color: rgb(0, 51, 102);
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .timeline-row .timeline-time small {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: normal;
+            color: #666;
+        }
+        .timeline-row .timeline-content {
+            position: relative;
+            padding: 20px 30px;
+            background: #f9f9f9;
+            border: 1px solid var(--site-teal);
+            border-radius: 8px;
+        }
+        .timeline-row.done .timeline-content {
+            background: #e9fbf7;
+        }
+        .timeline-row .timeline-content:before {
+            content: "";
+            position: absolute;
+            top: 20px;
+            right: -51px;
+            width: 20px;
+            height: 20px;
+            border-radius: 100px;
+            z-index: 10;
+            background: white;
+            border: 2px dashed var(--site-teal);
+        }
+        .timeline-row.done .timeline-content:before {
+            background: var(--site-teal);
+            border-style: solid;
+        }
+        .timeline-row .timeline-content h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 1.2rem;
+        }
+        .timeline-row .timeline-content ul {
+            margin: 0 0 15px;
+            padding-left: 20px;
+        }
+        .timeline-row:nth-child(even) .timeline-content {
+            margin-left: 40px;
+        }
+        .timeline-row:nth-child(even) .timeline-content:before {
+            left: -54px;
+            right: initial;
+        }
+        .timeline-row:nth-child(odd) {
+            padding-left: 0;
+            padding-right: 50%;
+        }
+        .timeline-row:nth-child(odd) .timeline-time {
+            right: auto;
+            left: 50%;
+            text-align: left;
+            margin-right: 0;
+            margin-left: 20px;
+        }
+        .timeline-row:nth-child(odd) .timeline-content {
+            margin-right: 40px;
+        }
+        .course-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+        .course-actions a.site-pill {
+            text-decoration: none;
+        }
+        .progress {
+            height: 12px;
+            background: #e6e6e6;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        .progress span {
+            display: block;
+            height: 100%;
+            background: var(--site-teal);
+        }
+        @media (max-width: 900px) {
+            .timeline { padding: 15px; }
+            .timeline:after { border: 0; }
+            .timeline .timeline-row,
+            .timeline .timeline-row:nth-child(odd) { padding: 0; }
+            .timeline .timeline-row .timeline-time,
+            .timeline .timeline-row:nth-child(odd) .timeline-time {
+                position: relative; top: 0; left: 0; margin: 0 0 10px 0; text-align: left;
+            }
+            .timeline .timeline-row .timeline-content { margin: 0 !important; }
+            .timeline .timeline-row .timeline-content:before { display: none; }
+        }
     </style>
 </head>
-<body>
-    <header class="bg-primary text-white text-center py-5">
-        <h1>PHILATELY CRASH COURSE 101</h1>
-    </header>
+<body class="site">
+{{ site_header('course') }}
 
-    <!-- <main class="container my-5">
-        <h2 class="text-center">Bootstrap 4.5.0 Features</h2>
-        <!-- <p>This is a simple example using Bootstrap 4.5.0.</p> -->
-    </main> -->
+<main class="site-main">
+    {{ site_flash() }}
+    <div class="site-page-title">
+        <h2>Philately Crash Course 101</h2>
+        <p>Four weeks from first stamp to confident collector.</p>
+        {% if current_user.is_authenticated %}
+            {% set total = 5 %}
+            <div class="progress" aria-label="Course progress"><span style="width: {{ (done|length / total * 100)|round }}%"></span></div>
+            <p class="site-muted" style="margin-top:6px">{{ done|length }} of {{ total }} sections complete</p>
+        {% else %}
+            <p class="site-muted" style="margin-top:6px"><a href="{{ url_for('auth.login', next=request.path) }}">Log in</a> to track your progress.</p>
+        {% endif %}
+    </div>
 
-    <!-- <footer class="bg-dark text-white text-center py-3">
-        <p>&copy; 2024 My Website</p>
-    </footer> -->
+    {% set weeks = [
+        ('week1', 'Week-1', 'Basics', 'Introduction to Philately',
+            ['Understand the basics', 'Learn terminology', 'Stamp anatomy and classification']),
+        ('week2', 'Week-2', 'Deepening', 'Building your Collection',
+            ['Start a collection', 'Store and handle stamps', 'Explore more']),
+        ('week3', 'Week-3', 'Development', 'Practical Application',
+            ['Organise your collection', 'Engage with the philately community']),
+        ('week4', 'Week-4', 'Final touch', 'Advanced Skills and Reflection',
+            ['Advanced collecting techniques', 'Review and plan future steps']),
+        ('bonus', 'Lifelong', 'Enjoyment', 'Bonus Habits',
+            ['Keep a journal', 'Stay curious']),
+    ] %}
 
-    <!-- JavaScript files -->
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
-    <div class="container">
-        <div class="timeline">
-                <div class="timeline-row">
-                    <div class="timeline-time">
-                        Week-1<small>Basics</small>
-                    </div>
-                    <div class="timeline-content">
-                        <i class="icon-attachment"></i>
-                        <h4>Introduction to Philately</h4>
-                        <p><ul style="text-align: left;">
-                            <li>Understand the basics</li>
-                            <li>Learn Terminology</li>
-                            <li>Stamp anantomy and Classification</li>
-                        </ul></p>
-                        <div class="thumbs">
-                            <img class="img-fluid rounded" src="https://bootdey.com/img/Content/avatar/avatar1.png" alt="Maxwell Admin">
-                            <img class="img-fluid rounded" src="https://bootdey.com/img/Content/avatar/avatar2.png" alt="Maxwell Admin">
-                            <img class="img-fluid rounded" src="https://bootdey.com/img/Content/avatar/avatar3.png" alt="Maxwell Admin">
-                        </div>
-                        <div class="">
-                            <span class="badge badge-pill" ><a href="https://youtu.be/T94PHkuydcw?si=87tMCiuO340R9VXB" style="color: white;">YouTube</a></span>
-                            <span class="badge badge-pill"><a href="#youtube" style="color: white;">Article</a></span>
-                        </div>
-                    </div>
+    <div class="timeline">
+        {% for key, when, sub, title, points in weeks %}
+        <div class="timeline-row {{ 'done' if key in done }}" id="{{ key }}">
+            <div class="timeline-time">{{ when }}<small>{{ sub }}</small></div>
+            <div class="timeline-content">
+                <h4>{{ title }} {% if key in done %}<span class="site-pill">✓ Done</span>{% endif %}</h4>
+                <ul>
+                    {% for p in points %}<li>{{ p }}</li>{% endfor %}
+                </ul>
+                <div class="course-actions">
+                    <a class="site-pill navy" href="https://youtu.be/T94PHkuydcw">YouTube</a>
+                    {% if key == 'week3' %}<a class="site-pill navy" href="{{ url_for('community.forums') }}">Join the Forums</a>{% endif %}
+                    {% if key == 'week2' %}<a class="site-pill navy" href="{{ url_for('main.buyer_home') }}">Browse the Stamp Mela</a>{% endif %}
+                    {% if current_user.is_authenticated %}
+                    <form method="post" action="{{ url_for('community.toggle_week', week=key) }}" style="display:inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="site-btn small {{ 'grey' if key in done else 'teal' }}" style="margin-top:0">{{ 'Mark as not done' if key in done else 'Mark as done' }}</button>
+                    </form>
+                    {% endif %}
                 </div>
-        
-                <div class="timeline-row">
-                    <div class="timeline-time">
-                        Week-2<small>Deepening</small>
-                    </div>
-                    <div class="timeline-content">
-                        <i class="icon-code"></i>
-                        <h4>Building your Collection</h4>
-                        <p>
-                            <ul style="text-align: left;">
-                                <li>Start a Collection</li>
-                                <li>Store and Handle Stamps</li>
-                                <li>Explore more</li>
-                            </ul>
-                        </p>
-                        <div class="thumbs">
-                            <div class="thumbs">
-                            <img class="img-fluid rounded" src="https://bootdey.com/img/Content/avatar/avatar1.png" alt="Maxwell Admin">
-                            <img class="img-fluid rounded" src="https://bootdey.com/img/Content/avatar/avatar2.png" alt="Maxwell Admin">
-                            <img class="img-fluid rounded" src="https://bootdey.com/img/Content/avatar/avatar3.png" alt="Maxwell Admin">
-                        </div>
-                        </div>
-                        <div class="">
-                            <span class="badge badge-pill" ><a href="https://youtu.be/T94PHkuydcw?si=87tMCiuO340R9VXB" style="color: white;">YouTube</a></span>
-                            <span class="badge badge-pill"><a href="#youtube" style="color: white;">Article</a></span>
-                        </div>
-                    </div>
-                </div>
-        
-                <div class="timeline-row">
-                    <div class="timeline-time">
-                        Week-3<small>Development</small>
-                    </div>
-                    <div class="timeline-content">
-                        <i class="icon-turned_in_not"></i>
-                        <h4>Practical Application</h4>
-                        <p><ul style="text-align: left;">
-                            <li>Organize Collection</li>
-                            <li>Enage with Philately Community</li>
-                        </ul></p>
-                        <div>
-                            <span class="badge badge-pill" ><a href="https://youtu.be/T94PHkuydcw?si=87tMCiuO340R9VXB" style="color: white;">YouTube</a></span>
-                            <span class="badge badge-pill"><a href="#youtube" style="color: white;">Article</a></span>
-                        </div>
-                    </div>
-                </div>
-        
-                <div class="timeline-row">
-                    <div class="timeline-time">
-                        Week-4<small>final touch</small>
-                    </div>
-                    <div class="timeline-content">
-                        <i class="icon-directions"></i>
-                        <h4>Advanced kills and Reflection</h4>
-                        <p><ul style="text-align: left;">
-                            <li>Advanced Collecting Techniques</li>
-                            <li>Review and plan future steps</li>
-                        </ul></p>
-                        <div>
-                            <span class="badge badge-pill" ><a href="https://youtu.be/T94PHkuydcw?si=87tMCiuO340R9VXB" style="color: white;">YouTube</a></span>
-                            <span class="badge badge-pill"><a href="#youtube" style="color: white;">Article</a></span>
-                        </div>
-                    </div>
-                </div>
-        
-                <div class="timeline-row">
-                    <div class="timeline-time">
-                        Lifelong<small>Enjoyment</small>
-                    </div>
-                    <div class="timeline-content">
-                        <i class="icon-change_history"></i>
-                        <h4>Bonus needs</h4>
-                        <p><ul style="text-align: left;">
-                            <li>Keep Journal</li>
-                            <li>Stay Curious</li>
-                        </ul></p>
-
-        
             </div>
         </div>
-        <script>
-            window.embeddedChatbotConfig = {
-            chatbotId: "gj861MJ01IWyF8xm6vDSj",
-            domain: "www.chatbase.co"
-            }
-            </script>
-            <script
-            src="https://www.chatbase.co/embed.min.js"
-            chatbotId="gj861MJ01IWyF8xm6vDSj"
-            domain="www.chatbase.co"
-            defer>
-            </script>
+        {% endfor %}
+    </div>
+</main>
+
+{{ site_footer() }}
 </body>
 </html>

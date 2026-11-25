@@ -1,3 +1,4 @@
+{% from "_member_sidebar.html" import member_sidebar with context %}
 {% from "_flash.html" import plain, csrf %}
 <!DOCTYPE html>
 <html lang="en">
@@ -9,34 +10,91 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
     <!-- Link to your CSS file using url_for -->
     <link rel="stylesheet" href="{{ url_for('static', filename='styles_for_dash.css') }}">
+    <style>
+        /* Extra profile widgets, built from the same white card as .profile-section. */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 25px 0;
+        }
+        .stat {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 18px;
+            text-align: center;
+        }
+        .stat strong {
+            display: block;
+            font-size: 26px;
+            color: #2d2d44;
+        }
+        .stat span {
+            font-size: 13px;
+            color: #666;
+        }
+        .widget-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .widget {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+        }
+        .widget h3 {
+            margin-top: 0;
+            font-size: 20px;
+        }
+        .widget a {
+            color: #2d2d44;
+        }
+        .note {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+        .note.unread {
+            font-weight: 600;
+        }
+        .note small {
+            display: block;
+            color: #888;
+            font-weight: normal;
+        }
+        .progress {
+            height: 10px;
+            background: #eee;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress span {
+            display: block;
+            height: 100%;
+            background: #ffcc00;
+        }
+        .checklist li {
+            margin: 6px 0;
+        }
+        @media (max-width: 900px) {
+            .widget-row { grid-template-columns: 1fr; }
+            .profile-section { flex-direction: column; }
+            .profile-info, .npda-section { width: 100%; }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <aside class="sidebar">
-            <div class="logo-section">
-                <!-- Link to the image using url_for -->
-                <img src="{{ url_for('static', filename='India-Post_Preview.png') }}" alt="India Post Logo" class="logo">
-                <a href="{{ url_for('main.home') }}"><h1>National Philatelic Community</h1></a>
-            </div>
-            <ul class="nav-links">
-                <!-- Use url_for to link to different pages -->
-                <li><a href="{{ url_for('member.myprofile') }}">My Profile</a></li>
-                <li><a href="#">Create NPDA Account</a></li>
-                <li><a href="{{ url_for('member.my_collection') }}">My Collection</a></li>
-                <li><a href="{{ url_for('member.settings') }}">Settings</a></li>
-                <li><a href="#">Help & Support</a></li>
-            </ul>
-            <!-- Add form to handle logout -->
-            <form action="{{ url_for('auth.logout') }}" method="post">
-                {{ csrf() }}
-                <button type="submit" class="logout-button">Logout</button>
-            </form>
-        </aside>
+        {{ member_sidebar('dashboard') }}
 
         <div class="main-content">
             <header class="dashboard-header">
                 <h2>Philatelist Dashboard</h2>
-                <p>Welcome, {{ current_user.full_name or current_user.username }} ({{ current_user.email }})</p>
+                <p>Welcome, {{ current_user.display_name }} ({{ current_user.email }})</p>
             </header>
 
             {{ plain() }}
@@ -45,17 +103,71 @@
                 <div class="profile-info">
                     <!-- Link to the profile picture using url_for -->
                     <img src="{{ url_for('main.uploaded_file', filename=current_user.avatar_filename) if current_user.avatar_filename else url_for('static', filename='profile-placeholder.avif') }}" alt="Profile Picture" class="profile-img">
-                    <h3 class="profile-name">{{ current_user.full_name or current_user.username }}</h3>
+                    <h3 class="profile-name">{{ current_user.display_name }}</h3>
                     <p>Email: {{ current_user.email }}</p>
-                    <p>Membership Type: Non-NPDA member</p>
+                    {% set acct = current_user.npda %}
+                    <p>Membership Type: {{ current_user.membership }} · {{ 'NPDA member' if acct and acct.is_active else 'Non-NPDA member' }}</p>
+                    <p><a href="{{ url_for('member.myprofile') }}">Edit profile</a></p>
                 </div>
 
                 <div class="npda-section">
+                    {% if acct and acct.is_active %}
+                    <h3>NPDA Account {{ acct.account_number }}</h3>
+                    <p><strong>Balance: ₹{{ acct.balance }}</strong></p>
+                    <p>Standing order: {{ acct.copies_per_issue }} cop{{ 'y' if acct.copies_per_issue == 1 else 'ies' }} of every new issue from {{ 'all postal circles' if acct.scope == 'all' else acct.home_circle ~ ' Postal Circle' }}, reserved automatically.</p>
+                    <button class="create-npda-btn" onclick="location.href='{{ url_for('member.npda') }}'">Manage NPDA Account</button>
+                    {% else %}
                     <h3>Create NPDA Account</h3>
-                    <p>National Philatelic Database Account allows you to register and manage your philatelic collections and participate in events.</p>
-                    <button class="create-npda-btn">Create NPDA Account</button>
+                    <p>National Philatelic Deposit Account allows you to register and manage your philatelic collections and participate in events. Keep a balance, and every new issue is reserved for you automatically.</p>
+                    <button class="create-npda-btn" onclick="location.href='{{ url_for('member.npda') }}'">Create NPDA Account</button>
+                    {% endif %}
                 </div>
             </section>
+
+            <div class="widget" style="margin-top:25px">
+                <h3 style="display:flex;justify-content:space-between;align-items:center">Your Badges
+                    <a href="{{ url_for('community.collector', username=current_user.username) }}" style="font-size:14px">View public profile →</a></h3>
+                {% set earned = badges|selectattr('earned')|list %}
+                {% for b in earned %}<span title="{{ b.description }}" style="display:inline-block;margin:4px 10px 4px 0;font-size:15px"><span style="font-size:24px">{{ b.icon }}</span> {{ b.name }}</span>{% endfor %}
+                {% set next_badge = badges|rejectattr('earned')|first %}
+                {% if not earned %}<p>No badges yet.</p>{% endif %}
+                {% if next_badge %}<p style="color:#666;font-size:14px;margin-bottom:0">Next up: {{ next_badge.icon }} <strong>{{ next_badge.name }}</strong>: {{ next_badge.description }} ({{ next_badge.progress }} / {{ next_badge.target }})</p>{% endif %}
+            </div>
+
+            <div class="stat-grid">
+                <div class="stat"><strong>{{ stats.bought }}</strong><span>stamps bought</span></div>
+                <div class="stat"><strong>{{ stats.prebooked }}</strong><span>copies pre-booked</span></div>
+                <div class="stat"><strong>{{ stats.listed }}</strong><span>stamps listed</span></div>
+                <div class="stat"><strong>{{ stats.sold }}</strong><span>stamps sold</span></div>
+                <div class="stat"><strong>₹{{ stats.spent }}</strong><span>spent</span></div>
+                <div class="stat"><strong>₹{{ stats.earned }}</strong><span>earned</span></div>
+                <div class="stat"><strong>{{ stats.wishlist }}</strong><span>on wishlist</span></div>
+            </div>
+
+            <div class="widget-row">
+                <div class="widget">
+                    <h3>Recent Notifications</h3>
+                    {% for n in notifications %}
+                    <div class="note {{ 'unread' if not n.is_read }}">{{ n.message }}{% if n.link %} <a href="{{ n.link }}">View</a>{% endif %}<small>{{ n.created_at.strftime('%d %b, %H:%M') }}</small></div>
+                    {% else %}
+                    <p>Nothing yet. NPDA bookings, sales and forum replies will appear here.</p>
+                    {% endfor %}
+                    <p><a href="{{ url_for('member.notifications') }}">All notifications →</a></p>
+                </div>
+
+                <div class="widget">
+                    <h3>Getting Started</h3>
+                    <ul class="checklist">
+                        <li>{{ '✅' if current_user.profile_complete else '⬜' }} <a href="{{ url_for('member.myprofile') }}">Complete your profile</a> (name, phone, address)</li>
+                        <li>{{ '✅' if acct and acct.is_active else '⬜' }} <a href="{{ url_for('member.npda') }}">Open an NPDA account</a></li>
+                        <li>{{ '✅' if stats.bought or stats.prebooked else '⬜' }} <a href="{{ url_for('main.buyer_home') }}">Get your first stamp</a></li>
+                        <li>{{ '✅' if stats.listed else '⬜' }} <a href="{{ url_for('main.sell_stamp') }}">List a stamp for sale</a></li>
+                    </ul>
+                    <h3>Crash Course</h3>
+                    <div class="progress"><span style="width: {{ (course_done / course_total * 100)|round }}%"></span></div>
+                    <p>{{ course_done }} of {{ course_total }} sections complete · <a href="{{ url_for('community.crash_course') }}">Continue learning →</a></p>
+                </div>
+            </div>
         </div>
     </div>
 </body>

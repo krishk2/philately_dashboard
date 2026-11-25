@@ -1,3 +1,4 @@
+{% from "_member_sidebar.html" import member_sidebar with context %}
 {% from "_flash.html" import plain, csrf %}
 <!DOCTYPE html>
 <html lang="en">
@@ -10,24 +11,7 @@
 </head>
 <body>
     <div class="container">
-        <aside class="sidebar">
-            <div class="logo-section">
-                <img src="{{ url_for('static', filename='India-Post_Preview.png') }}" alt="India Post Logo" class="logo">
-                <h1>National Philatelic Community</h1>
-            </div>
-            <ul class="nav-links">
-                <li><a href="{{ url_for('member.dashboard') }}">Dashboard</a></li>
-                <li><a href="{{ url_for('member.myprofile') }}">My Profile</a></li>
-                <li><a href="#">Create NPDA Account</a></li>
-                <li><a href="{{ url_for('member.my_collection') }}">My Collection</a></li>
-                <li><a href="{{ url_for('member.settings') }}" class="active">Settings</a></li>
-                <li><a href="#">Help & Support</a></li>
-            </ul>
-            <form action="{{ url_for('auth.logout') }}" method="post">
-                {{ csrf() }}
-                <button type="submit" class="logout-button">Logout</button>
-            </form>
-        </aside>
+        {{ member_sidebar('settings') }}
 
         <div class="main-content">
             <header class="dashboard-header">

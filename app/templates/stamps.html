@@ -31,7 +31,7 @@
                 <li><a href="{{ url_for('circle.manage_stamps') }}" class="active">Manage Stamps</a></li>
                 <li><a href="{{ url_for('circle.events') }}">Events</a></li>
                 <li><a href="{{ url_for('circle.settings') }}">Settings</a></li>
-                <li><a href="#">Help & Support</a></li>
+                <li><a href="{{ url_for('community.forums', category='help') }}">Help & Support</a></li>
             </ul>
             <form action="{{ url_for('auth.logout') }}" method="post">
                 {{ csrf() }}

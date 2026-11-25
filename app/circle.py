@@ -125,8 +125,15 @@ def add_stamp():
         "prebook_available": request.form.get("stampStock") or 0,
     }
     try:
-        svc.create_issue(current_user, data, request.files.get("stampImage"))
-        flash("Stamp added successfully!", "success")
+        issue = svc.create_issue(current_user, data, request.files.get("stampImage"))
+        r = issue.npda_result
+        message = "Stamp added successfully!"
+        if any(r.values()):
+            message += (
+                f" NPDA standing orders: {r['booked']} subscriber(s) booked automatically, "
+                f"{r['low_balance']} skipped for low balance, {r['sold_out']} missed (sold out)."
+            )
+        flash(message, "success")
     except DomainError as exc:
         flash(exc.message, "error")
     return redirect(url_for("circle.manage_stamps"))

@@ -41,6 +41,17 @@ class Config:
     GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
     GEMINI_TIMEOUT = float(os.environ.get("GEMINI_TIMEOUT", "20"))
 
+    # Single sign-on. Each provider is enabled only when its client id and secret are set.
+    GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
+    GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
+    YAHOO_CLIENT_ID = os.environ.get("YAHOO_CLIENT_ID")
+    YAHOO_CLIENT_SECRET = os.environ.get("YAHOO_CLIENT_SECRET")
+
+    # Imported philately headlines (`flask import-feeds`). Extra RSS/Atom feeds can be added as
+    # "kind|label|url" entries separated by commas, kind being release, news or event.
+    FEED_TIMEOUT = float(os.environ.get("FEED_TIMEOUT", "20"))
+    FEED_EXTRA_RSS = os.environ.get("FEED_EXTRA_RSS", "")
+
 
 class DevelopmentConfig(Config):
     DEBUG = True
@@ -56,6 +67,12 @@ class TestingConfig(Config):
     GEMINI_API_KEY = None
     # scrypt is deliberately slow; tests don't need that.
     PASSWORD_HASH_METHOD = "pbkdf2:sha256:1000"
+    # Fake credentials so the SSO providers are registered; tests mock the OAuth exchange.
+    GOOGLE_CLIENT_ID = "test-google-id"
+    GOOGLE_CLIENT_SECRET = "test-google-secret"
+    YAHOO_CLIENT_ID = "test-yahoo-id"
+    YAHOO_CLIENT_SECRET = "test-yahoo-secret"
+    FEED_EXTRA_RSS = ""
 
 
 class ProductionConfig(Config):

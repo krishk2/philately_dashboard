@@ -9,10 +9,47 @@ image.
   issues in the Stamp Store and track everything in My Collection.
 - **Postal circles** publish official issues (with a reference image and pre-booking stock), set
   stock, post news updates and run events such as stamp melas.
-- **Home page** shows upcoming releases, events and news from the circles, plus a help chatbot
-  (Gemini when configured, a canned reply otherwise).
+- **Home page** shows upcoming releases, events and news from the circles *and* imported from
+  India Post and Rainbow Stamp News, plus a help chatbot (Gemini when configured).
+- **NPDA accounts** (modelled on India Post's Philatelic Deposit Account): open one in a click from
+  your profile, keep a balance, and every new issue from your chosen circles is reserved and paid
+  for automatically when it is published.
+- **Community**: forums, public collector profiles with their collection, computed badges and
+  follows, notifications, and a crash course with progress tracking.
+- **Sign in with Google or Yahoo** (OpenID Connect) alongside username and password.
 - **Listing verification** flags copied photos and claims that don't match the official issue.
 - **REST API** (`/api/v1`) with bearer tokens, pagination, filters and consistent JSON errors.
+
+## Feature notes
+
+**NPDA standing orders.** `services/npda.py::fulfil_new_issue` runs when a circle publishes an
+issue. Subscribers are served oldest account first. Stock and balance are each taken with a
+conditional `UPDATE ... WHERE stock >= n` / `WHERE balance >= cost`, and stock is put back if the
+balance is short, so concurrent bookings can't oversell or overdraw. Each subscriber is
+notified of the outcome. India Post has no public API for opening a real PDA, so this is the
+app's own account, and deposits are simulated.
+
+**Imported headlines** (`flask import-feeds`, run it from cron, e.g. every 6 hours):
+
+| Source | How | Goes to |
+|---|---|---|
+| postagestamps.gov.in/News.aspx | HTML parsing (no API/RSS exists; robots.txt allows it) | Releases (title, ₹ value, number of stamps, date) and notices |
+| Rainbow Stamp News | RSS | News |
+| Anything in `FEED_EXTRA_RSS` | RSS/Atom | releases, news or events |
+
+Only headline facts are stored, each with a link to the original. The importer sends one
+request per source, honours robots.txt, uses timeouts, and skips a failing source without
+affecting the others. indiapost.gov.in (Stamp Calendar) blocks automated clients, so it is
+deliberately not used. Parsers are tested offline against saved copies of the real pages.
+
+**Badges** are computed from data every time (no manual awards): First Stamp, Collector (10),
+Curator (50), Circle Explorer (3 circles), Vintage Hunter (pre-1950), Trusted Seller, Standing
+Order (NPDA), Scholar (crash course), Community Voice (5 posts), Well Known (5 followers).
+Collectors can hide their collection from their public profile.
+
+**SSO.** A known Google/Yahoo identity signs into its linked account. Otherwise a *verified*
+email is linked to the matching account, or a new philatelist account is created. Postal circle
+(official) accounts can't use SSO.
 
 ## Architecture
 
@@ -40,12 +77,14 @@ app/
   __init__.py        app factory, error handlers
   config.py          config from environment variables (no secrets in code)
   models.py          SQLAlchemy 2.0 models with DB-level check constraints
-  auth.py            login / register (separate philatelist and postal circle forms)
+  auth.py            login / register (philatelist and postal circle forms), Google/Yahoo SSO
   web.py             home, Stamp Store, Stamp Mela marketplace, selling, buying, wishlist
-  member.py          philatelist dashboard, profile, My Collection, settings
+  member.py          philatelist dashboard, profile, NPDA, My Collection, notifications, settings
+  community.py       forums, collector profiles + follows, crash course progress
   circle.py          postal circle dashboard, Manage Stamps, events, settings
   api.py             JSON REST API
-  services/          business logic: marketplace, accounts, uploads, chatbot, domain errors
+  services/          business logic: marketplace, accounts, npda, sso, feeds, collectors,
+                     notifications, uploads, chatbot, domain errors
   templates/ static/ the original v1 pages and styles, wired to the new backend
   verification/      imagehash (dHash from scratch), vision client, check runner
   cli.py             `flask seed` demo data
@@ -111,6 +150,7 @@ uv sync
 cp .env.example .env        # set SECRET_KEY
 uv run flask --app wsgi db upgrade
 uv run flask --app wsgi seed
+uv run flask --app wsgi import-feeds   # optional: fetch India Post / RSS headlines
 uv run flask --app wsgi run --debug
 ```
 

@@ -1,3 +1,4 @@
+{% from "_member_sidebar.html" import member_sidebar with context %}
 {% from "_flash.html" import plain, csrf %}
 <!DOCTYPE html>
 <html lang="en">
@@ -10,25 +11,7 @@
 </head>
 <body>
     <div class="container">
-        <aside class="sidebar">
-            <div class="logo-section">
-                <img src="{{ url_for('static', filename='India-Post_Preview.png') }}" alt="India Post Logo" class="logo">
-                <h1>National Philatelic Community</h1>
-            </div>
-            <ul class="nav-links">
-                <li><a href="{{ url_for('member.dashboard') }}">Dashboard</a></li>
-                <li><a href="{{ url_for('member.myprofile') }}" class="active">My Profile</a></li>
-                <li><a href="#">Create NPDA Account</a></li>
-                <li><a href="{{ url_for('member.my_collection') }}">My Collection</a></li>
-                <li><a href="{{ url_for('member.settings') }}">Settings</a></li>
-                <li><a href="#">Help & Support</a></li>
-            </ul>
-            <!-- Add form to handle logout -->
-            <form action="{{ url_for('auth.logout') }}" method="post">
-                {{ csrf() }}
-                <button type="submit" class="logout-button">Logout</button>
-            </form>
-        </aside>
+        {{ member_sidebar('profile') }}
 
         <div class="main-content">
             <header class="profile-header">
@@ -39,7 +22,7 @@
 
             <section class="profile-edit-section">
                 <h3>Edit Your Profile Details</h3>
-                <form id="profileForm" method="POST" enctype="multipart/form-data" action="{{ url_for('member.myprofile') }}">
+                <form id="profileForm" method="POST" enctype="multipart/form-data" action="{{ url_for('member.myprofile', next=request.args.get('next')) }}">
                     {{ csrf() }}
                     <div class="profile-picture">
                         <img id="profilePic" src="{{ url_for('main.uploaded_file', filename=current_user.avatar_filename) if current_user.avatar_filename else url_for('static', filename='profile-placeholder.avif') }}" alt="Profile Picture">
@@ -51,6 +34,13 @@
 
                     <label for="email">Email</label>
                     <input type="email" id="email" name="email" placeholder="john.doe@example.com" value="{{ request.form.get('email', current_user.email) }}" required>
+
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" name="phone" placeholder="+91 98765 43210" value="{{ request.form.get('phone', current_user.phone or '') }}">
+
+                    <label for="address">Dispatch Address</label>
+                    <textarea id="address" name="address" rows="3" placeholder="House, street, city, PIN code" style="width:100%;padding:0.75rem;margin-bottom:1rem;border:1px solid #ddd;border-radius:4px;font:inherit;box-sizing:border-box">{{ request.form.get('address', current_user.address or '') }}</textarea>
+                    <p style="margin:-0.5rem 0 1rem;font-size:0.85rem;color:#666">Used to prefill checkout and needed for an NPDA account, where new issues are dispatched.</p>
 
                     <label for="membership">Membership Type</label>
                     <select id="membership" name="membership">

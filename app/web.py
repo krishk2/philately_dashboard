@@ -24,6 +24,9 @@ from sqlalchemy import func, select
 
 from .extensions import csrf, db
 from .models import (
+    FEED_EVENT,
+    FEED_NEWS,
+    FEED_RELEASE,
     LISTING_ACTIVE,
     LISTING_REMOVED,
     CircleUpdate,
@@ -34,7 +37,7 @@ from .models import (
     Prebooking,
     WishlistItem,
 )
-from .services import assistant
+from .services import assistant, feeds
 from .services import marketplace as svc
 from .services.errors import DomainError
 
@@ -87,17 +90,24 @@ def home():
     news = db.session.scalars(
         select(CircleUpdate).order_by(CircleUpdate.created_at.desc()).limit(5)
     ).all()
-    return render_template("landing.html", events=events, releases=releases, news=news)
-
-
-@bp.route("/philately_crash_course")
-def philately_crash_course():
-    return render_template("philately_crash_course.html")
+    # Headlines imported by `flask import-feeds` (India Post, Rainbow Stamp News, extra RSS).
+    return render_template(
+        "landing.html",
+        events=events,
+        releases=releases,
+        news=news,
+        feed_releases=feeds.latest(FEED_RELEASE, 8),
+        feed_news=feeds.latest(FEED_NEWS, 8),
+        feed_events=feeds.latest(FEED_EVENT, 8),
+        feeds_updated=feeds.last_import(),
+    )
 
 
 @bp.route("/stamp_museum")
 def stamp_museum():
-    return render_template("stamp_museum.html")
+    # The museum's archive wing: every official issue the circles have published, oldest first.
+    archive = db.session.scalars(select(Issue).order_by(Issue.issue_date, Issue.id)).all()
+    return render_template("stamp_museum.html", archive=archive)
 
 
 @bp.post("/ask")
@@ -118,7 +128,8 @@ def uploaded_file(filename):
 @bp.route("/stamp_store")
 def stamp_store():
     issues = db.session.scalars(select(Issue).order_by(Issue.issue_date.desc())).all()
-    return render_template("stamp_store.html", issues=issues)
+    npda = current_user.npda if current_user.is_authenticated else None
+    return render_template("stamp_store.html", issues=issues, npda=npda)
 
 
 @bp.route("/pre_book")
@@ -229,7 +240,13 @@ def purchase(stamp_id):
             )
         flash(f"Purchase completed! Order #{order.id}, total ₹{order.total}.", "success")
         return redirect(url_for("main.orders"))
-    form = {"name": current_user.full_name or current_user.username, "email": current_user.email}
+    # Prefill from the saved profile so checkout is one click for returning buyers.
+    form = {
+        "name": current_user.display_name,
+        "email": current_user.email,
+        "phone": current_user.phone or "",
+        "address": current_user.address or "",
+    }
     return render_template("purchase.html", stamp=stamp, form=form)
 
 

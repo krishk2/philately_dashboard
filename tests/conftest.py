@@ -19,6 +19,7 @@ def app(tmp_path):
         yield app
         _db.session.remove()
         _db.drop_all()
+        _db.engine.dispose()  # close the in-memory SQLite connection
 
 
 @pytest.fixture

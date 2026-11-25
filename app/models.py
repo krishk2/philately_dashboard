@@ -67,9 +67,15 @@ class User(UserMixin, TimestampMixin, db.Model):
     full_name: Mapped[str | None] = mapped_column(String(120))
     membership: Mapped[str] = mapped_column(String(16), default="Basic", server_default="Basic")
     avatar_filename: Mapped[str | None] = mapped_column(String(255))
+    phone: Mapped[str | None] = mapped_column(String(20))
+    address: Mapped[str | None] = mapped_column(Text)
+    bio: Mapped[str | None] = mapped_column(String(300))
+    # Public collector profile: whether others can see what this user owns.
+    show_collection: Mapped[bool] = mapped_column(default=True, server_default="1")
 
     listings: Mapped[list[Listing]] = relationship(back_populates="seller")
     orders: Mapped[list[Order]] = relationship(back_populates="buyer")
+    npda: Mapped[NpdaAccount | None] = relationship(back_populates="user", uselist=False)
 
     __table_args__ = (CheckConstraint(f"role IN {ROLES}", name="ck_users_role"),)
 
@@ -83,6 +89,20 @@ class User(UserMixin, TimestampMixin, db.Model):
     @property
     def is_circle(self) -> bool:
         return self.role == ROLE_CIRCLE
+
+    @property
+    def display_name(self) -> str:
+        return self.full_name or self.username
+
+    @property
+    def initials(self) -> str:
+        parts = self.display_name.split()
+        return "".join(p[0] for p in parts[:2]).upper() or "?"
+
+    @property
+    def profile_complete(self) -> bool:
+        """NPDA accounts need a name, phone and dispatch address."""
+        return bool(self.full_name and self.phone and self.address)
 
     def to_dict(self) -> dict:
         return {
@@ -305,3 +325,195 @@ class VerificationReport(TimestampMixin, db.Model):
             "checks": self.checks,
             "checked_at": self.created_at.isoformat(),
         }
+
+
+# ---------- NPDA (National Philatelic Deposit Account) ----------
+
+NPDA_ACTIVE = "active"
+NPDA_CLOSED = "closed"
+NPDA_SCOPE_HOME = "home"  # new issues from the account's home circle only
+NPDA_SCOPE_ALL = "all"  # new issues from every circle
+
+
+class NpdaAccount(TimestampMixin, db.Model):
+    """An in-app deposit account modelled on India Post's Philatelic Deposit Account.
+
+    The holder keeps a balance; whenever a matching postal circle publishes a new issue, copies
+    are reserved automatically and the balance is debited (a standing order).
+    """
+
+    __tablename__ = "npda_accounts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True)
+    account_number: Mapped[str | None] = mapped_column(String(32), unique=True)
+    home_circle: Mapped[str] = mapped_column(String(64))
+    balance: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0"))
+    copies_per_issue: Mapped[int] = mapped_column(Integer, default=1)
+    scope: Mapped[str] = mapped_column(String(8), default=NPDA_SCOPE_HOME)
+    status: Mapped[str] = mapped_column(String(8), default=NPDA_ACTIVE, index=True)
+
+    user: Mapped[User] = relationship(back_populates="npda")
+    transactions: Mapped[list[NpdaTransaction]] = relationship(
+        back_populates="account", order_by="NpdaTransaction.id.desc()"
+    )
+
+    __table_args__ = (
+        CheckConstraint("balance >= 0", name="ck_npda_balance_nonneg"),
+        CheckConstraint("copies_per_issue BETWEEN 1 AND 10", name="ck_npda_copies_range"),
+    )
+
+    @property
+    def is_active(self) -> bool:
+        return self.status == NPDA_ACTIVE
+
+
+class NpdaTransaction(TimestampMixin, db.Model):
+    __tablename__ = "npda_transactions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("npda_accounts.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(12))  # deposit / debit / refund
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    balance_after: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    description: Mapped[str] = mapped_column(String(255))
+    issue_id: Mapped[int | None] = mapped_column(ForeignKey("issues.id"))
+
+    account: Mapped[NpdaAccount] = relationship(back_populates="transactions")
+
+
+class Notification(TimestampMixin, db.Model):
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    message: Mapped[str] = mapped_column(String(500))
+    link: Mapped[str | None] = mapped_column(String(255))
+    is_read: Mapped[bool] = mapped_column(default=False, server_default="0")
+
+
+# ---------- learning progress (Philately Crash Course) ----------
+
+COURSE_WEEKS = ("week1", "week2", "week3", "week4", "bonus")
+
+
+class CourseProgress(TimestampMixin, db.Model):
+    __tablename__ = "course_progress"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    week: Mapped[str] = mapped_column(String(16))
+
+    __table_args__ = (UniqueConstraint("user_id", "week", name="uq_course_user_week"),)
+
+
+# ---------- forums ----------
+
+FORUM_CATEGORIES = {
+    "general": "General Discussion",
+    "identification": "Stamp Identification",
+    "trading": "Buying & Selling",
+    "new-issues": "New Issues & Releases",
+    "events": "Events & Exhibitions",
+    "help": "Help & Support",
+}
+
+
+class ForumThread(TimestampMixin, db.Model):
+    __tablename__ = "forum_threads"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    category: Mapped[str] = mapped_column(String(32), index=True)
+    title: Mapped[str] = mapped_column(String(150))
+    body: Mapped[str] = mapped_column(Text)
+    last_activity: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, index=True
+    )
+
+    author: Mapped[User] = relationship()
+    replies: Mapped[list[ForumReply]] = relationship(
+        back_populates="thread", cascade="all, delete-orphan", order_by="ForumReply.id"
+    )
+
+    @property
+    def category_label(self) -> str:
+        return FORUM_CATEGORIES.get(self.category, self.category)
+
+
+class ForumReply(TimestampMixin, db.Model):
+    __tablename__ = "forum_replies"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    thread_id: Mapped[int] = mapped_column(ForeignKey("forum_threads.id"), index=True)
+    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    body: Mapped[str] = mapped_column(Text)
+
+    thread: Mapped[ForumThread] = relationship(back_populates="replies")
+    author: Mapped[User] = relationship()
+
+
+# ---------- single sign-on ----------
+
+
+class OAuthIdentity(TimestampMixin, db.Model):
+    """Links a Google / Yahoo account (provider + stable subject id) to a local user."""
+
+    __tablename__ = "oauth_identities"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    provider: Mapped[str] = mapped_column(String(16))
+    subject: Mapped[str] = mapped_column(String(255))
+    email: Mapped[str] = mapped_column(String(255))
+
+    user: Mapped[User] = relationship()
+
+    __table_args__ = (UniqueConstraint("provider", "subject", name="uq_oauth_provider_subject"),)
+
+
+# ---------- imported philately news (India Post, RSS feeds) ----------
+
+FEED_RELEASE = "release"
+FEED_NEWS = "news"
+FEED_EVENT = "event"
+
+
+class FeedItem(db.Model):
+    """A headline imported from an external source, always shown with a link back to it."""
+
+    __tablename__ = "feed_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source: Mapped[str] = mapped_column(String(32), index=True)
+    source_label: Mapped[str] = mapped_column(String(64))
+    external_id: Mapped[str] = mapped_column(String(255))
+    kind: Mapped[str] = mapped_column(String(8), index=True)
+    title: Mapped[str] = mapped_column(String(300))
+    url: Mapped[str] = mapped_column(String(500))
+    published_on: Mapped[date | None] = mapped_column(Date, index=True)
+    denomination: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    stamp_count: Mapped[int | None] = mapped_column(Integer)
+    summary: Mapped[str] = mapped_column(Text, default="")
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("source", "external_id", name="uq_feed_source_item"),)
+
+
+# ---------- collector network ----------
+
+
+class Follow(TimestampMixin, db.Model):
+    __tablename__ = "follows"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    follower_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    followed_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+
+    follower: Mapped[User] = relationship(foreign_keys=[follower_id])
+    followed: Mapped[User] = relationship(foreign_keys=[followed_id])
+
+    __table_args__ = (
+        UniqueConstraint("follower_id", "followed_id", name="uq_follow_pair"),
+        CheckConstraint("follower_id <> followed_id", name="ck_follow_not_self"),
+    )
