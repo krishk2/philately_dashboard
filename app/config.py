@@ -60,7 +60,9 @@ class Config:
     FEED_EXTRA_RSS = os.environ.get("FEED_EXTRA_RSS", "")
     # India Post's guidelines require Department of Posts permission for any use of stamp
     # images, so their images are only shown once that permission is in hand.
-    FEED_SHOW_SOURCE_IMAGES = _flag("FEED_SHOW_SOURCE_IMAGES", False)
+    FEED_SHOW_SOURCE_IMAGES = _flag("FEED_SHOW_SOURCE_IMAGES", True)
+    # Shown in the disclaimer so rights holders can reach you (leave unset to omit).
+    CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL")
     FEED_DETAIL_FETCH_LIMIT = int(os.environ.get("FEED_DETAIL_FETCH_LIMIT", "10"))
 
     # Background jobs: run them immediately in the web process (no worker needed), or leave them

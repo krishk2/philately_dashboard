@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Disclaimer &amp; legal notes{% endblock %}
+{% block container_class %}narrow{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Disclaimer &amp; Legal Notes</h1><p>Please read before using or sharing this site.</p></div></div>
+
+<section class="card stack">
+    <div>
+        <h2>What this is</h2>
+        <p>The National Philatelic Community was built for <strong>Smart India Hackathon 2024, Problem Statement 1762</strong>
+        (Ministry of Communications, Department of Posts: <em>Building a National Web Community of Philatelists</em>).
+        It is a <strong>demonstration of an idea</strong>. It is <strong>not a commercial product</strong> and, as built, is
+        <strong>not commercially viable or ready for real money</strong>.</p>
+    </div>
+    <div>
+        <h2>Simulated features</h2>
+        <ul>
+            <li>Card payments and NPDA deposits are simulated. No money moves and no card data is stored.</li>
+            <li>The NPDA account here is the community's own model of a deposit account. It is <strong>not</strong> an India Post Philatelic Deposit Account and cannot be used to order from India Post.</li>
+            <li>Marketplace listings are user-submitted. The verification checks compare photos and claims; they <strong>do not authenticate a physical stamp</strong>.</li>
+        </ul>
+    </div>
+    <div>
+        <h2>India Post content</h2>
+        <p>Stamp images and release details shown from India Post's website (postagestamps.gov.in) belong to the
+        <strong>Department of Posts, Government of India</strong>. Issuing a postage stamp is its sovereign privilege, and
+        its guidelines require prior permission for any use of stamp images. They are shown here for
+        <strong>non-commercial demonstration only</strong>, with each item crediting and linking to its source.
+        Permission for this display has <strong>not</strong> been confirmed. They will be removed on request.</p>
+        <p>This site is not affiliated with, endorsed by, or speaking for India Post. Views and content are the builders' own,
+        and the Department of Posts has no responsibility for them.</p>
+    </div>
+    <div>
+        <h2>Your data</h2>
+        <p>Accounts hold names, emails, phone numbers and addresses. This is demo software: use test data. Do not enter real card
+        or Aadhaar details.</p>
+    </div>
+    {% if config.CONTACT_EMAIL %}<div><h2>Takedown &amp; contact</h2><p>Rights holders and users can write to <strong>{{ config.CONTACT_EMAIL }}</strong>.</p></div>{% endif %}
+</section>
+{% endblock %}

@@ -48,13 +48,14 @@
                 {% for c in carousel %}
                 <article class="item">
                     <div class="media">
-                        {% if c.image %}<img src="{{ c.image }}" alt="{{ c.title }}" loading="lazy" {% if c.external %}referrerpolicy="no-referrer"{% endif %}>
+                        {% if c.image %}<img src="{{ c.image }}" alt="{{ c.title }}" decoding="async" {% if c.external %}referrerpolicy="no-referrer"{% endif %}>
                         {% else %}{{ stamp_art(c.title, c.value, 'teal' if loop.index is even else '') }}{% endif %}
                     </div>
                     <div class="body">
                         <span class="kicker">{{ c.kicker }}</span>
                         <h3 class="title">{{ c.title }}</h3>
                         <p class="desc">{{ c.desc }}</p>
+                        {% if c.external and c.image %}<p class="muted small" style="margin:0">Image: Department of Posts, Govt. of India</p>{% endif %}
                         <div class="foot">
                             <span class="price">{{ c.value }}</span>
                             <a class="btn sm {{ 'ghost' if c.external }}" href="{{ c.link }}" {% if c.external %}target="_blank" rel="noopener"{% endif %}>{{ c.cta }}</a>

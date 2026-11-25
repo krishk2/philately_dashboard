@@ -259,7 +259,9 @@ p { margin: 0 0 .8em; }
     justify-content: center;
     padding: 12px;
 }
-.item .media img { width: 100%; height: 100%; object-fit: contain; }
+.item .media { position: relative; overflow: hidden; }
+/* Absolutely positioned so every card's image box is the same size whatever the image's own size. */
+.item .media > img { position: absolute; inset: 12px; width: calc(100% - 24px); height: calc(100% - 24px); object-fit: contain; }
 .item .body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
 .item .kicker {
     font-size: .72rem;
@@ -666,7 +668,8 @@ dl.details dd { margin: 0; }
 .site-footer h4 { color: #fff; font-size: .9rem; margin-bottom: 10px; }
 .site-footer a { color: #c9d3da; text-decoration: none; display: block; margin: 5px 0; font-size: .9rem; }
 .site-footer a:hover { color: #fff; }
-.site-footer .legal { border-top: 1px solid rgba(255, 255, 255, .08); text-align: center; font-size: .8rem; padding: 14px 20px; color: #8796a2; }
+.site-footer .legal a { display: inline; color: #fff; text-decoration: underline; }
+.site-footer .legal { line-height: 1.6; border-top: 1px solid rgba(255, 255, 255, .08); text-align: center; font-size: .8rem; padding: 14px 20px; color: #8796a2; }
 
 /* ---------- chatbot ---------- */
 .chat-fab {

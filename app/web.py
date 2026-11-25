@@ -203,6 +203,11 @@ def home():
     )
 
 
+@bp.route("/about")
+def about():
+    return render_template("about.html")
+
+
 @bp.route("/stamp_museum")
 def stamp_museum():
     # The museum's archive wing: every official issue the circles have published, oldest first.

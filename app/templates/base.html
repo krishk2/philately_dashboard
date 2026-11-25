@@ -127,7 +127,14 @@
             <a href="{{ url_for('main.stamp_museum') }}">Stamp Museum</a>
         </div>
     </div>
-    <div class="legal">Not affiliated with India Post. Imported headlines link to their original sources.</div>
+    <div class="legal">
+        <strong>Built for Smart India Hackathon 2024 (Problem Statement 1762, Ministry of Communications, Department of Posts)
+        as a demonstration of an idea. Not a commercial product and not commercially viable as built.</strong><br>
+        Stamp images and release details belong to the Department of Posts, Government of India, and are shown here for
+        non-commercial demonstration only, with acknowledgement. Not affiliated with or endorsed by India Post; the views
+        and content are the builders' own. Payments, deposits and NPDA accounts are simulated.
+        <a href="{{ url_for('main.about') }}">Disclaimer &amp; legal notes</a>
+    </div>
 </footer>
 
 {% block chatbot %}
