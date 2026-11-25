@@ -5,30 +5,55 @@
       "Sid": "LambdaForPhilatelyOnly",
       "Effect": "Allow",
       "Action": [
-        "lambda:CreateFunction", "lambda:UpdateFunctionCode", "lambda:UpdateFunctionConfiguration",
-        "lambda:GetFunction", "lambda:GetFunctionConfiguration", "lambda:DeleteFunction",
-        "lambda:PublishVersion", "lambda:CreateFunctionUrlConfig", "lambda:UpdateFunctionUrlConfig",
-        "lambda:GetFunctionUrlConfig", "lambda:DeleteFunctionUrlConfig", "lambda:AddPermission",
-        "lambda:RemovePermission", "lambda:InvokeFunction", "lambda:PutFunctionConcurrency",
-        "lambda:DeleteFunctionConcurrency", "lambda:GetFunctionConcurrency", "lambda:TagResource",
-        "lambda:ListTags", "lambda:ListVersionsByFunction"
+        "lambda:CreateFunction",
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration",
+        "lambda:GetFunction",
+        "lambda:GetFunctionConfiguration",
+        "lambda:DeleteFunction",
+        "lambda:PublishVersion",
+        "lambda:CreateFunctionUrlConfig",
+        "lambda:UpdateFunctionUrlConfig",
+        "lambda:GetFunctionUrlConfig",
+        "lambda:DeleteFunctionUrlConfig",
+        "lambda:AddPermission",
+        "lambda:RemovePermission",
+        "lambda:InvokeFunction",
+        "lambda:PutFunctionConcurrency",
+        "lambda:DeleteFunctionConcurrency",
+        "lambda:GetFunctionConcurrency",
+        "lambda:TagResource",
+        "lambda:ListTags",
+        "lambda:ListVersionsByFunction"
       ],
       "Resource": "arn:aws:lambda:*:*:function:philately-*"
     },
     {
       "Sid": "LambdaListNeedsStar",
       "Effect": "Allow",
-      "Action": ["lambda:ListFunctions"],
+      "Action": [
+        "lambda:ListFunctions"
+      ],
       "Resource": "*"
     },
     {
       "Sid": "ContainerImageRegistry",
       "Effect": "Allow",
       "Action": [
-        "ecr:CreateRepository", "ecr:DescribeRepositories", "ecr:PutImage", "ecr:InitiateLayerUpload",
-        "ecr:UploadLayerPart", "ecr:CompleteLayerUpload", "ecr:BatchCheckLayerAvailability",
-        "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer", "ecr:SetRepositoryPolicy",
-        "ecr:PutLifecyclePolicy", "ecr:DescribeImages"
+        "ecr:CreateRepository",
+        "ecr:DescribeRepositories",
+        "ecr:PutImage",
+        "ecr:InitiateLayerUpload",
+        "ecr:UploadLayerPart",
+        "ecr:CompleteLayerUpload",
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:BatchGetImage",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:SetRepositoryPolicy",
+        "ecr:PutLifecyclePolicy",
+        "ecr:DescribeImages",
+        "ecr:DeleteRepository",
+        "ecr:BatchDeleteImage"
       ],
       "Resource": "arn:aws:ecr:*:*:repository/philately*"
     },
@@ -42,19 +67,39 @@
       "Sid": "UploadsBucket",
       "Effect": "Allow",
       "Action": [
-        "s3:CreateBucket", "s3:PutBucketPublicAccessBlock", "s3:PutBucketCors", "s3:PutBucketPolicy",
-        "s3:PutLifecycleConfiguration", "s3:GetBucketLocation", "s3:ListBucket",
-        "s3:GetObject", "s3:PutObject", "s3:DeleteObject"
+        "s3:CreateBucket",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:PutBucketCors",
+        "s3:PutBucketPolicy",
+        "s3:PutLifecycleConfiguration",
+        "s3:GetBucketLocation",
+        "s3:ListBucket",
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:DeleteBucket",
+        "s3:ListBucketVersions"
       ],
-      "Resource": ["arn:aws:s3:::philately-*", "arn:aws:s3:::philately-*/*"]
+      "Resource": [
+        "arn:aws:s3:::philately-*",
+        "arn:aws:s3:::philately-*/*"
+      ]
     },
     {
       "Sid": "RolesForThePhilatelyFunctionsOnly",
       "Effect": "Allow",
       "Action": [
-        "iam:CreateRole", "iam:GetRole", "iam:DeleteRole", "iam:PassRole", "iam:AttachRolePolicy",
-        "iam:DetachRolePolicy", "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:TagRole",
-        "iam:ListAttachedRolePolicies", "iam:ListRolePolicies"
+        "iam:CreateRole",
+        "iam:GetRole",
+        "iam:DeleteRole",
+        "iam:PassRole",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:TagRole",
+        "iam:ListAttachedRolePolicies",
+        "iam:ListRolePolicies"
       ],
       "Resource": "arn:aws:iam::*:role/philately-*"
     },
@@ -62,8 +107,12 @@
       "Sid": "ConfigAndSecretsInFreeParameterStore",
       "Effect": "Allow",
       "Action": [
-        "ssm:PutParameter", "ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath",
-        "ssm:DeleteParameter", "ssm:AddTagsToResource"
+        "ssm:PutParameter",
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+        "ssm:GetParametersByPath",
+        "ssm:DeleteParameter",
+        "ssm:AddTagsToResource"
       ],
       "Resource": "arn:aws:ssm:*:*:parameter/philately/*"
     },
@@ -71,8 +120,14 @@
       "Sid": "Logs",
       "Effect": "Allow",
       "Action": [
-        "logs:CreateLogGroup", "logs:PutRetentionPolicy", "logs:DescribeLogGroups",
-        "logs:DescribeLogStreams", "logs:GetLogEvents", "logs:FilterLogEvents", "logs:TailLogs"
+        "logs:CreateLogGroup",
+        "logs:PutRetentionPolicy",
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams",
+        "logs:GetLogEvents",
+        "logs:FilterLogEvents",
+        "logs:TailLogs",
+        "logs:DeleteLogGroup"
       ],
       "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/philately-*:*"
     },
@@ -80,8 +135,14 @@
       "Sid": "ScheduledJobs",
       "Effect": "Allow",
       "Action": [
-        "scheduler:CreateSchedule", "scheduler:UpdateSchedule", "scheduler:GetSchedule",
-        "scheduler:DeleteSchedule", "scheduler:CreateScheduleGroup", "scheduler:GetScheduleGroup"
+        "scheduler:CreateSchedule",
+        "scheduler:UpdateSchedule",
+        "scheduler:GetSchedule",
+        "scheduler:DeleteSchedule",
+        "scheduler:CreateScheduleGroup",
+        "scheduler:GetScheduleGroup",
+        "scheduler:ListSchedules",
+        "scheduler:DeleteScheduleGroup"
       ],
       "Resource": "*"
     },
@@ -89,11 +150,20 @@
       "Sid": "SpendingCap",
       "Effect": "Allow",
       "Action": [
-        "budgets:ViewBudget", "budgets:ModifyBudget", "budgets:CreateBudgetAction",
-        "budgets:DescribeBudgetAction", "budgets:DescribeBudgetActionsForBudget",
-        "budgets:ExecuteBudgetAction", "budgets:UpdateBudgetAction", "budgets:DeleteBudgetAction",
-        "sns:CreateTopic", "sns:Subscribe", "sns:SetTopicAttributes", "sns:GetTopicAttributes",
-        "sns:Publish", "sns:TagResource"
+        "budgets:ViewBudget",
+        "budgets:ModifyBudget",
+        "budgets:CreateBudgetAction",
+        "budgets:DescribeBudgetAction",
+        "budgets:DescribeBudgetActionsForBudget",
+        "budgets:ExecuteBudgetAction",
+        "budgets:UpdateBudgetAction",
+        "budgets:DeleteBudgetAction",
+        "sns:CreateTopic",
+        "sns:Subscribe",
+        "sns:SetTopicAttributes",
+        "sns:GetTopicAttributes",
+        "sns:Publish",
+        "sns:TagResource"
       ],
       "Resource": "*"
     },
@@ -101,8 +171,11 @@
       "Sid": "SeeWhatYouAreSpending",
       "Effect": "Allow",
       "Action": [
-        "ce:GetCostAndUsage", "ce:GetCostForecast", "billing:GetBillingData",
-        "freetier:GetFreeTierUsage", "cur:DescribeReportDefinitions"
+        "ce:GetCostAndUsage",
+        "ce:GetCostForecast",
+        "billing:GetBillingData",
+        "freetier:GetFreeTierUsage",
+        "cur:DescribeReportDefinitions"
       ],
       "Resource": "*"
     }
