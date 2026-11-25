@@ -17,7 +17,9 @@ lam = boto3.client("lambda")
 
 
 def handler(event, context):
-    names = [n.strip() for n in os.environ.get("APP_FUNCTIONS", "philately-web").split(",") if n.strip()]
+    names = [
+        n.strip() for n in os.environ.get("APP_FUNCTIONS", "philately-web").split(",") if n.strip()
+    ]
     for name in names:
         lam.put_function_concurrency(FunctionName=name, ReservedConcurrentExecutions=0)
     print(json.dumps({"disabled": names, "reason": "budget threshold reached"}))
