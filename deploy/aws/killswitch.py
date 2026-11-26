@@ -5,8 +5,9 @@ so nobody can reach it, and (2) sets reserved concurrency to 0 as a second layer
 billed while the app is off. Data in Neon and S3 is untouched.
 
 Turn the app back on:
-  aws lambda create-function-url-config --function-name philately-web \n      --auth-type NONE --region eu-central-1
-  aws lambda delete-function-concurrency --function-name philately-web --region eu-central-1
+  aws lambda create-function-url-config --function-name philately-web --auth-type NONE
+  aws lambda delete-function-concurrency --function-name philately-web
+  (add --region eu-central-1 to both)
   (the URL changes; update the Google redirect URI)
 
 Environment: APP_FUNCTION (default philately-web), APP_REGION (default eu-central-1).
