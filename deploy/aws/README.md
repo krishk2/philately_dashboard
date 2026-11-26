@@ -1,5 +1,24 @@
 # Deploying to AWS
 
+## Scale-to-zero (what is deployed): Lambda + Neon + S3, no Docker needed
+
+```bash
+uv run python scripts/build_lambda.py        # builds dist/philately-lambda.zip (Linux wheels)
+# upload the zip to a bucket in the function's region, then:
+aws lambda update-function-code --function-name philately-web --region eu-central-1 \n    --s3-bucket <deploy-bucket> --s3-key philately-lambda.zip
+# schema changes: run `flask db upgrade` from your machine with DATABASE_URL set to Neon
+```
+
+* `lambda_handler.py` serves HTTP (Function URL) and `{"task": "run-jobs"}` events from an
+  EventBridge schedule (every 6 h: expire holds, refresh feeds).
+* Region: keep the function in the same region as the database. Neon here is in Frankfurt, so the
+  function is in eu-central-1; S3 uploads can live in another region.
+* Cost/safety: see [SPENDING-CAP.md](SPENDING-CAP.md) and [iam-deployer-policy.json](iam-deployer-policy.json).
+* Add `https://<function-url>/login/google/callback` to the Google OAuth client's redirect URIs.
+
+---
+
+## Always-on alternative: ECS Fargate
 One Docker image runs every role (`web`, `worker`, `migrate`, `run-jobs`; see
 `docker-entrypoint.sh`). The recommended setup is **ECS on Fargate**, which runs containers
 without managing servers.

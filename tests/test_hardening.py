@@ -172,6 +172,13 @@ def test_s3_storage_round_trip():
     assert client.list_objects_v2(Bucket="stamps").get("KeyCount") == 0
 
 
+def test_default_s3_client_signs_with_sigv4():
+    storage = S3Storage(
+        "b", region_name="ap-south-1", aws_access_key_id="k", aws_secret_access_key="s"
+    )
+    assert "X-Amz-Signature" in storage.url("a.png")
+
+
 def test_uploads_go_to_s3_and_route_redirects(app, client, alice):
     with mock_aws():
         s3 = boto3.client("s3", region_name="us-east-1")

@@ -22,6 +22,15 @@ wheels = [
 ]
 
 [[package]]
+name = "apig-wsgi"
+version = "2.20.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/90/4a/3036a3cd4fdec296b510b366a5e69e4784abce836d57de5f8a3c6ee96691/apig_wsgi-2.20.0.tar.gz", hash = "sha256:9c6aea1e96688b5848efb409ae3c3afb4ed2b162cd71dab683b1466a7387b964", size = 17158, upload-time = "2025-09-08T15:30:31.767Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/38/d2/dfdc29f172c9c8f73b895aeae285717585905a4a9c0d677ed7a1cd7f9812/apig_wsgi-2.20.0-py3-none-any.whl", hash = "sha256:5489b3590a748d42b8c040ca11e776ce9eecbb00ae34f509ce82a89f5babfc47", size = 8420, upload-time = "2025-09-08T15:30:30.552Z" },
+]
+
+[[package]]
 name = "async-timeout"
 version = "5.0.1"
 source = { registry = "https://pypi.org/simple" }
@@ -992,6 +1001,7 @@ name = "philately-dashboard"
 version = "2.0.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "apig-wsgi" },
     { name = "authlib" },
     { name = "beautifulsoup4" },
     { name = "boto3" },
@@ -1021,6 +1031,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "apig-wsgi", specifier = ">=2.18" },
     { name = "authlib", specifier = ">=1.3" },
     { name = "beautifulsoup4", specifier = ">=4.12" },
     { name = "boto3", specifier = ">=1.34" },

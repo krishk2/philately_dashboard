@@ -22,6 +22,7 @@ dependencies = [
     "flask-limiter>=3.5",
     "boto3>=1.34",
     "redis>=5.0",
+    "apig-wsgi>=2.18",
 ]
 
 [dependency-groups]

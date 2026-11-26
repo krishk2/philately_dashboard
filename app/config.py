@@ -6,6 +6,8 @@ Nothing secret lives in this file. Copy `.env.example` to `.env` for local devel
 import os
 from pathlib import Path
 
+from sqlalchemy.pool import NullPool
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -19,6 +21,11 @@ def _database_url() -> str:
     return url
 
 
+# True when running inside AWS Lambda: the filesystem is read-only except /tmp, each instance
+# should hold one short-lived database connection, and request bodies are capped at ~6 MB.
+IS_LAMBDA = bool(os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
+
+
 def _flag(name: str, default: bool) -> bool:
     value = os.environ.get(name)
     if value is None:
@@ -29,10 +36,15 @@ def _flag(name: str, default: bool) -> bool:
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY")
     SQLALCHEMY_DATABASE_URI = _database_url()
-    SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
+    # Lambda: no connection pool (instances are frozen between requests, so pooled connections
+    # would go stale). Neon's pooled endpoint does the real pooling.
+    SQLALCHEMY_ENGINE_OPTIONS = {"poolclass": NullPool} if IS_LAMBDA else {"pool_pre_ping": True}
 
-    UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", str(BASE_DIR / "instance" / "uploads"))
-    MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5 MB per request
+    UPLOAD_FOLDER = os.environ.get(
+        "UPLOAD_FOLDER", "/tmp/uploads" if IS_LAMBDA else str(BASE_DIR / "instance" / "uploads")
+    )
+    # Lambda rejects request bodies over 6 MB (after base64), so stay under that.
+    MAX_CONTENT_LENGTH = (4 if IS_LAMBDA else 5) * 1024 * 1024
     ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 
     API_TOKEN_MAX_AGE = 7 * 24 * 3600  # seconds

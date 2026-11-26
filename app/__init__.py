@@ -18,7 +18,13 @@ from .extensions import csrf, db, limiter, login_manager, migrate
 def create_app(config_name: str | None = None, overrides: dict | None = None) -> Flask:
     load_dotenv()
     config_name = config_name or os.environ.get("FLASK_ENV_NAME", "development")
-    app = Flask(__name__, instance_relative_config=True)
+    from .config import IS_LAMBDA
+
+    app = Flask(
+        __name__,
+        instance_relative_config=True,
+        instance_path="/tmp/instance" if IS_LAMBDA else None,
+    )
     app.config.from_object(CONFIGS[config_name])
     app.config.update(overrides or {})
 

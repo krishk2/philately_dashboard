@@ -49,8 +49,15 @@ class S3Storage:
     ):
         if client is None:
             import boto3
+            from botocore.config import Config
 
-            client = boto3.client("s3", **{k: v for k, v in client_kwargs.items() if v})
+            # SigV4 is required by newer regions (e.g. Mumbai) for presigned URLs; boto3's
+            # default can fall back to the old scheme, which those regions reject.
+            client = boto3.client(
+                "s3",
+                config=Config(signature_version="s3v4"),
+                **{k: v for k, v in client_kwargs.items() if v},
+            )
         self.client = client
         self.bucket = bucket
         self.prefix = prefix
@@ -93,7 +100,14 @@ def init_storage(app: Flask) -> None:
             prefix=config.get("S3_PREFIX") or "",
             public_url=config.get("S3_PUBLIC_URL"),
             region_name=config.get("S3_REGION"),
-            endpoint_url=config.get("S3_ENDPOINT_URL"),
+            # Use the bucket's regional endpoint for AWS S3; the global one answers presigned
+            # requests for non-us-east-1 buckets with a redirect, which breaks signed URLs.
+            endpoint_url=config.get("S3_ENDPOINT_URL")
+            or (
+                f"https://s3.{config['S3_REGION']}.amazonaws.com"
+                if config.get("S3_REGION")
+                else None
+            ),
             aws_access_key_id=config.get("S3_ACCESS_KEY_ID"),
             aws_secret_access_key=config.get("S3_SECRET_ACCESS_KEY"),
         )
