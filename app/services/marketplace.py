@@ -8,6 +8,7 @@ from decimal import Decimal, InvalidOperation
 
 from flask import current_app
 from sqlalchemy import or_, select, update
+from sqlalchemy.orm import selectinload
 
 from ..extensions import db
 from ..models import (
@@ -157,7 +158,16 @@ def search_listings(
     sort: str | None = None,
 ):
     """Build a SELECT for active listings matching the filters (newest first by default)."""
-    stmt = select(Listing).where(Listing.status == LISTING_ACTIVE)
+    # Load the related rows in a few batched queries instead of one per card (N+1).
+    stmt = (
+        select(Listing)
+        .where(Listing.status == LISTING_ACTIVE)
+        .options(
+            selectinload(Listing.seller),
+            selectinload(Listing.verification),
+            selectinload(Listing.issue),
+        )
+    )
     if query:
         pattern = f"%{query}%"
         stmt = stmt.where(or_(Listing.title.ilike(pattern), Listing.description.ilike(pattern)))
